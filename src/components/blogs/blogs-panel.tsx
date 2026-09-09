@@ -8,17 +8,12 @@ import {
   ChevronRight,
   Clock,
   Copy,
-  Database,
   ExternalLink,
   EyeOff,
   FileText,
   Globe,
-  History,
-  Info,
-  Lock,
   Plus,
   RefreshCw,
-  ShieldCheck,
   TrendingUp,
 } from "lucide-react";
 import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
@@ -36,7 +31,6 @@ type BlogsPanelProps = {
   project: ProjectConfig;
   blogs: UnifiedBlog[];
   error?: string | null;
-  syncedAt: string;
   canCreate?: boolean;
 };
 
@@ -101,7 +95,6 @@ export function BlogsPanel({
   project,
   blogs,
   error = null,
-  syncedAt,
   canCreate = false,
 }: BlogsPanelProps) {
   const router = useRouter();
@@ -231,9 +224,6 @@ export function BlogsPanel({
         <div>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>Blogs & Articles</h1>
-            <span className={styles.countBadge}>
-              {formatNumber(publishedCount)} Published Posts
-            </span>
           </div>
           <p className={styles.description}>
             {canCreate
@@ -243,19 +233,6 @@ export function BlogsPanel({
         </div>
 
         <div className={styles.headerActions}>
-          {canCreate ? (
-            <div className={styles.projectScopeChip}>
-              <Database size={16} aria-hidden />
-              <span>
-                Project database · <strong>{project.name}</strong>
-              </span>
-            </div>
-          ) : (
-            <div className={styles.readOnlyChip}>
-              <Lock size={16} aria-hidden />
-              Read-only access
-            </div>
-          )}
           <button
             type="button"
             className={styles.ghostButton}
@@ -274,29 +251,6 @@ export function BlogsPanel({
               Create blog
             </Link>
           ) : null}
-          <a
-            className={styles.primaryButton}
-            href={`https://${meta.domain}/blog`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Preview Live Blog
-            <ExternalLink size={16} aria-hidden />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.infoBanner}>
-        <Info className={styles.infoIcon} size={22} aria-hidden />
-        <div className={styles.infoContent}>
-          <p className={styles.infoText}>
-            {canCreate
-              ? `New posts are written directly to the ${project.name} PostgreSQL database and appear on the live site when published.`
-              : "You can browse blog performance here. Contact an admin or editor to create new posts."}
-          </p>
-          <span className={styles.infoEndpoint}>
-            Live site: https://{meta.domain}/blog
-          </span>
         </div>
       </div>
 
@@ -669,36 +623,6 @@ export function BlogsPanel({
         </div>
           </>
         )}
-      </div>
-
-      <div className={styles.footerStrip}>
-        <div className={styles.footerMeta}>
-          <div className={styles.footerItem}>
-            <span className={styles.footerDot} aria-hidden />
-            <span className={styles.footerStrong}>
-              {canCreate ? "Database: Connected" : "Database: Read-only"}
-            </span>
-            <span>({project.name})</span>
-          </div>
-          <div className={styles.footerItem}>
-            <History size={16} aria-hidden />
-            <span>Last refresh: {formatRelativeTime(syncedAt)}</span>
-          </div>
-          <div className={styles.footerItem}>
-            <Globe size={16} aria-hidden />
-            <span>
-              Origin host: <code className={styles.footerCode}>{meta.domain}</code>
-            </span>
-          </div>
-        </div>
-        <div className={styles.footerNote}>
-          <ShieldCheck size={16} aria-hidden />
-          <span>
-            {canCreate
-              ? "Posts created here are stored in this project's database."
-              : "Browse blog performance here. Editing requires editor or admin access."}
-          </span>
-        </div>
       </div>
 
     </div>

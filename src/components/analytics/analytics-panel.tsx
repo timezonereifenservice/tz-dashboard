@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowDown,
@@ -11,30 +11,30 @@ import {
   Download,
   Globe,
   Link2,
+  MousePointerClick,
   Monitor,
   PieChart,
-  ShieldCheck,
   Smartphone,
   TrendingUp,
   Users,
-  X,
 } from "lucide-react";
+import { AnalyticsTimeSeriesChart } from "@/components/analytics/analytics-time-series-chart";
 import { ConnectivityErrorBanner } from "@/components/system";
-import type { AnalyticsSnapshot } from "@/lib/adapters/types";
+import { buildAnalyticsView } from "@/lib/adapters/analytics-engine";
+import type {
+  AnalyticsDailyPoint,
+  AnalyticsRawData,
+  AnalyticsSnapshot,
+} from "@/lib/adapters/types";
 import { getProjectMeta } from "@/lib/projects/meta";
 import type { ProjectConfig } from "@/lib/projects/config";
-import {
-  formatAnalyticsDateRange,
-  formatNumber,
-  formatPct,
-  previousPeriodValue,
-} from "@/lib/utils";
+import { formatAnalyticsDateRange, formatNumber, formatPct } from "@/lib/utils";
 import styles from "./analytics.module.css";
 
 type AnalyticsPanelProps = {
   project: ProjectConfig;
   initialPeriod: "7d" | "30d";
-  snapshot: AnalyticsSnapshot;
+  rawData: AnalyticsRawData;
   error: string | null;
 };
 
@@ -74,65 +74,11 @@ function ShareBar({
   );
 }
 
-function AnalyticsChart() {
-  return (
-    <div className={styles.chartArea}>
-      <svg
-        className={styles.chartSvg}
-        viewBox="0 0 1000 240"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <defs>
-          <linearGradient id="visitorAreaGrad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#1B4D89" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#1B4D89" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="conversionAreaGrad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#006c4b" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#006c4b" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <line x1="0" y1="40" x2="1000" y2="40" stroke="#E2E8F0" strokeDasharray="4 4" />
-        <line x1="0" y1="90" x2="1000" y2="90" stroke="#E2E8F0" strokeDasharray="4 4" />
-        <line x1="0" y1="140" x2="1000" y2="140" stroke="#E2E8F0" strokeDasharray="4 4" />
-        <line x1="0" y1="190" x2="1000" y2="190" stroke="#E2E8F0" strokeDasharray="4 4" />
-        <path
-          d="M 0,165 Q 35,160 70,150 T 140,155 T 210,135 T 280,145 T 350,110 T 420,120 T 490,95 T 540,28 T 600,105 T 670,85 T 740,100 T 810,70 T 880,80 T 950,55 L 1000,60 L 1000,220 L 0,220 Z"
-          fill="url(#visitorAreaGrad)"
-        />
-        <path
-          d="M 0,205 Q 35,202 70,200 T 140,201 T 210,195 T 280,198 T 350,185 T 420,188 T 490,180 T 540,160 T 600,182 T 670,175 T 740,178 T 810,155 T 880,165 T 950,150 L 1000,152 L 1000,220 L 0,220 Z"
-          fill="url(#conversionAreaGrad)"
-        />
-        <path
-          d="M 0,165 Q 35,160 70,150 T 140,155 T 210,135 T 280,145 T 350,110 T 420,120 T 490,95 T 540,28 T 600,105 T 670,85 T 740,100 T 810,70 T 880,80 T 950,55 L 1000,60"
-          fill="none"
-          stroke="#1B4D89"
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 0,205 Q 35,202 70,200 T 140,201 T 210,195 T 280,198 T 350,185 T 420,188 T 490,180 T 540,160 T 600,182 T 670,175 T 740,178 T 810,155 T 880,165 T 950,150 L 1000,152"
-          fill="none"
-          stroke="#006c4b"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        <circle cx="540" cy="28" r="6" fill="#1B4D89" stroke="#FFFFFF" strokeWidth="2" />
-        <circle cx="810" cy="155" r="5" fill="#006c4b" stroke="#FFFFFF" strokeWidth="2" />
-      </svg>
-      <div className={styles.chartAxis}>
-        <span>Start</span>
-        <span>Mid period</span>
-        <span>Peak</span>
-        <span>End</span>
-      </div>
-    </div>
-  );
-}
-
-function exportSnapshotCsv(projectName: string, snapshot: AnalyticsSnapshot) {
+function exportSnapshotCsv(
+  projectName: string,
+  snapshot: AnalyticsSnapshot,
+  dailySeries: AnalyticsDailyPoint[],
+) {
   const rows = [
     ["Metric", "Value"],
     ["Period", snapshot.period],
@@ -140,6 +86,15 @@ function exportSnapshotCsv(projectName: string, snapshot: AnalyticsSnapshot) {
     ["Leads", String(snapshot.kpis.leads)],
     ["Conversion Rate", `${snapshot.kpis.conversionRate}%`],
     ["Consent Rate", `${snapshot.kpis.consentRate}%`],
+    ["CTA Clicks", String(snapshot.kpis.ctaClicks)],
+    [],
+    ["CTA", "Clicks", "Share %", "CTR %"],
+    ...snapshot.ctas.map((row) => [
+      row.label,
+      String(row.clicks),
+      String(row.sharePct),
+      `${row.ctrPct}%`,
+    ]),
     [],
     ["Country", "Visitors", "Share %"],
     ...snapshot.countries.map((row) => [row.label, String(row.visitors), String(row.sharePct)]),
@@ -152,6 +107,13 @@ function exportSnapshotCsv(projectName: string, snapshot: AnalyticsSnapshot) {
     [],
     ["Page", "Views"],
     ...snapshot.topPages.map((row) => [row.path, String(row.views)]),
+    [],
+    ["Date", "Visitors", "Leads"],
+    ...dailySeries.map((row) => [
+      row.date,
+      String(row.visitors),
+      String(row.leads),
+    ]),
   ];
 
   const csv = rows.map((row) => row.join(",")).join("\n");
@@ -167,32 +129,39 @@ function exportSnapshotCsv(projectName: string, snapshot: AnalyticsSnapshot) {
 export function AnalyticsPanel({
   project,
   initialPeriod,
-  snapshot,
+  rawData,
   error,
 }: AnalyticsPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const meta = getProjectMeta(project.id);
   const period = (searchParams.get("period") as "7d" | "30d") || initialPeriod;
-  const [showTelemetry, setShowTelemetry] = useState(true);
 
   const dateRange = useMemo(() => formatAnalyticsDateRange(period), [period]);
+
+  const analyticsView = useMemo(
+    () => buildAnalyticsView(period, rawData.events, rawData.leads),
+    [period, rawData.events, rawData.leads],
+  );
+
+  const {
+    snapshot,
+    dailySeries,
+    previousVisitors,
+    previousLeads,
+    previousCtaClicks,
+    consentAccepted,
+    consentTotal,
+  } = analyticsView;
 
   const isEmptyPeriod =
     snapshot.kpis.visitors === 0 &&
     snapshot.kpis.leads === 0 &&
+    snapshot.kpis.ctaClicks === 0 &&
     snapshot.topPages.length === 0;
 
-  const prevVisitors = previousPeriodValue(
-    snapshot.kpis.visitors,
-    snapshot.kpis.visitorsChangePct,
-  );
-  const prevLeads = previousPeriodValue(
-    snapshot.kpis.leads,
-    snapshot.kpis.leadsChangePct,
-  );
-  const consentedVisitors = Math.round(
-    (snapshot.kpis.visitors * snapshot.kpis.consentRate) / 100,
+  const hasChartData = dailySeries.some(
+    (point) => point.visitors > 0 || point.leads > 0,
   );
 
   function setPeriod(next: "7d" | "30d") {
@@ -205,7 +174,7 @@ export function AnalyticsPanel({
       value: formatNumber(snapshot.kpis.visitors),
       icon: Users,
       change: snapshot.kpis.visitorsChangePct,
-      prevLabel: `${formatNumber(prevVisitors)} prev`,
+      prevLabel: `${formatNumber(previousVisitors)} prev`,
       accent: "primary" as const,
     },
     {
@@ -213,8 +182,16 @@ export function AnalyticsPanel({
       value: formatNumber(snapshot.kpis.leads),
       icon: Mail,
       change: snapshot.kpis.leadsChangePct,
-      prevLabel: `${formatNumber(prevLeads)} prev`,
+      prevLabel: `${formatNumber(previousLeads)} prev`,
       accent: "secondary" as const,
+    },
+    {
+      label: "CTA Clicks",
+      value: formatNumber(snapshot.kpis.ctaClicks),
+      icon: MousePointerClick,
+      change: snapshot.kpis.ctaClicksChangePct,
+      prevLabel: `${formatNumber(previousCtaClicks)} prev`,
+      accent: "primary" as const,
     },
     {
       label: "Conversion Rate",
@@ -229,7 +206,7 @@ export function AnalyticsPanel({
       value: `${snapshot.kpis.consentRate}%`,
       icon: Cookie,
       change: undefined,
-      prevLabel: `${formatNumber(consentedVisitors)} consented`,
+      prevLabel: `${formatNumber(consentAccepted)} of ${formatNumber(consentTotal)} events`,
       accent: "secondary" as const,
     },
   ];
@@ -280,7 +257,7 @@ export function AnalyticsPanel({
           <button
             type="button"
             className={styles.exportButton}
-            onClick={() => exportSnapshotCsv(project.name, snapshot)}
+            onClick={() => exportSnapshotCsv(project.name, snapshot, dailySeries)}
           >
             <Download size={18} aria-hidden />
             Export CSV
@@ -296,31 +273,6 @@ export function AnalyticsPanel({
           port="5432"
           onRetry={() => router.refresh()}
         />
-      ) : null}
-
-      {!error && showTelemetry ? (
-        <div className={styles.telemetryBanner}>
-          <div className={styles.telemetryBody}>
-            <div className={styles.telemetryIcon}>
-              <ShieldCheck size={20} aria-hidden />
-            </div>
-            <p className={styles.telemetryText}>
-              <span className={styles.telemetryStrong}>Telemetry Active:</span>{" "}
-              Tracking live production traffic with anonymized GDPR compliance.
-              Cookie consent rate is{" "}
-              <strong>{snapshot.kpis.consentRate}%</strong> across active domains.
-            </p>
-          </div>
-          <span className={styles.complianceBadge}>ePrivacy Compliant</span>
-          <button
-            type="button"
-            className={styles.bannerDismiss}
-            aria-label="Dismiss notice"
-            onClick={() => setShowTelemetry(false)}
-          >
-            <X size={18} aria-hidden />
-          </button>
-        </div>
       ) : null}
 
       {isEmptyPeriod && !error ? (
@@ -402,10 +354,10 @@ export function AnalyticsPanel({
             </div>
           </div>
         </div>
-        {isEmptyPeriod ? (
+        {!hasChartData ? (
           <div className={styles.chartEmpty}>No chart data for this period yet</div>
         ) : (
-          <AnalyticsChart />
+          <AnalyticsTimeSeriesChart series={dailySeries} />
         )}
       </section>
 
@@ -538,6 +490,71 @@ export function AnalyticsPanel({
           <div className={styles.cardFooter}>
             <span>Device mix for selected period</span>
             <span className={styles.cardFooterAccent}>Platform insight</span>
+          </div>
+        </section>
+
+        <section className={styles.breakdownCard}>
+          <div>
+            <div className={styles.breakdownHeader}>
+              <div className={styles.breakdownTitleWrap}>
+                <div className={styles.breakdownIcon}>
+                  <MousePointerClick size={20} aria-hidden />
+                </div>
+                <div>
+                  <h3 className={styles.breakdownTitle}>Website CTA Performance</h3>
+                  <p className={styles.breakdownSubtitle}>
+                    Button and call-to-action click tracking across the site
+                  </p>
+                </div>
+              </div>
+              <span className={`${styles.cardBadge} ${styles.cardBadgeAccent}`}>
+                {formatNumber(snapshot.kpis.ctaClicks)} Clicks
+              </span>
+            </div>
+            <div className={styles.tableWrap}>
+              {snapshot.ctas.length === 0 ? (
+                <div className={styles.emptyTable}>No CTA click data yet</div>
+              ) : (
+                <table className={styles.table}>
+                  <thead>
+                    <tr className={styles.tableHeadRow}>
+                      <th>CTA Element</th>
+                      <th className={styles.tableHeadRight}>Clicks</th>
+                      <th className={styles.tableHeadRight}>Share %</th>
+                      <th className={styles.tableHeadRight}>CTR %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {snapshot.ctas.map((row, index) => (
+                      <tr key={row.id} className={styles.tableRow}>
+                        <td>
+                          <div>
+                            <div className={styles.pathCode}>{row.label}</div>
+                            <div className={styles.pathHint}>{row.id}</div>
+                          </div>
+                        </td>
+                        <td className={`${styles.tableCellRight} ${styles.tableCellMuted}`}>
+                          {formatNumber(row.clicks)}
+                        </td>
+                        <td className={styles.tableCellRight}>
+                          <ShareBar
+                            pct={row.sharePct}
+                            variant={index === 1 ? "secondary" : "primary"}
+                          />
+                        </td>
+                        <td className={styles.tableCellRight}>
+                          <span className={styles.ctrValue}>{row.ctrPct}%</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+          <div className={styles.cardFooter}>
+            <span>{snapshot.ctas.length} tracked CTAs</span>
+            <span className={styles.cardFooterAccent}>Engagement tracking</span>
           </div>
         </section>
 

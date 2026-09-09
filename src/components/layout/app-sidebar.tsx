@@ -74,9 +74,6 @@ export function AppSidebar({
                   {item.id === "leads" && newLeadsCount > 0 ? (
                     <span className={styles.navBadge}>{newLeadsCount}</span>
                   ) : null}
-                  {item.id === "chatbot-leads" ? (
-                    <span className={styles.navHint}>TZ</span>
-                  ) : null}
                 </Link>
               );
             })}

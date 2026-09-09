@@ -10,8 +10,6 @@ import {
   ChevronRight,
   Download,
   MailOpen,
-  Plus,
-  RefreshCw,
   RotateCcw,
   Search,
   Timer,
@@ -216,30 +214,6 @@ export function LeadsTable({
 
   return (
     <div className={styles.page}>
-      <div className={styles.opsBanner}>
-        <div className={styles.opsLeft}>
-          <span className={styles.opsDot} aria-hidden />
-          <div className={styles.opsText}>
-            <span className={styles.opsStrong}>
-              {newTodayCount > 0
-                ? `${newTodayCount} new unassigned inquiries today`
-                : `${leads.filter((lead) => lead.status === "NEW").length} open new inquiries`}
-            </span>
-            <span className={styles.opsMuted}>•</span>
-            <span className={styles.opsMuted}>
-              Active property scope:{" "}
-              <span className={styles.opsAccent}>
-                {project.name} ({meta.domain})
-              </span>
-            </span>
-          </div>
-        </div>
-        <span className={styles.refreshChip}>
-          <RefreshCw size={15} aria-hidden />
-          Live data
-        </span>
-      </div>
-
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.titleRow}>
@@ -259,10 +233,6 @@ export function LeadsTable({
           >
             <Download size={18} aria-hidden />
             Export CSV
-          </button>
-          <button type="button" className={styles.primaryButton} disabled title="Coming soon">
-            <Plus size={18} aria-hidden />
-            Manual Lead
           </button>
         </div>
       </div>

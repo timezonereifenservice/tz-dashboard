@@ -224,6 +224,13 @@ export const takeBringAdapter: ProjectAdapter = {
     });
   },
 
+  async getAnalyticsRawData(period: AnalyticsPeriod) {
+    const days = period === "7d" ? 7 : 30;
+    const since = sinceIso(days * 2);
+    const [events, leads] = await Promise.all([fetchEvents(since), fetchLeads()]);
+    return { events, leads };
+  },
+
   async getAnalyticsSnapshot(period: AnalyticsPeriod): Promise<AnalyticsSnapshot> {
     const days = period === "7d" ? 7 : 30;
     const since = sinceIso(days * 2);

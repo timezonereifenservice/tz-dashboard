@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, LogOut, Menu, Settings, UserCog } from "lucide-react";
+import { UserAvatar } from "@/components/users/user-avatar";
 import { usersNavItem } from "@/lib/dashboard-nav";
 import type { ProjectConfig } from "@/lib/projects/config";
 import type { DashboardUser } from "@/lib/auth/types";
-import { getInitials } from "@/lib/utils";
 import styles from "./header.module.css";
 
 type AppHeaderProps = {
@@ -15,15 +15,6 @@ type AppHeaderProps = {
   user: DashboardUser;
   onMenuClick: () => void;
 };
-
-function displayName(email: string) {
-  const local = email.split("@")[0] ?? email;
-  return local
-    .split(/[._-]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 export function AppHeader({ currentProject, user, onMenuClick }: AppHeaderProps) {
   const router = useRouter();
@@ -79,28 +70,17 @@ export function AppHeader({ currentProject, user, onMenuClick }: AppHeaderProps)
       </div>
 
       <div className={styles.right}>
-        <div className={styles.status}>
-          <span className={styles.statusDot} aria-hidden />
-          <span className={styles.statusText}>All systems operational</span>
-        </div>
-        <span className={styles.divider} aria-hidden />
         <div className={styles.profileWrap} ref={menuRef}>
           <button
             type="button"
             className={styles.profileButton}
             aria-expanded={menuOpen}
             aria-haspopup="menu"
+            aria-label="Account menu"
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <span className={styles.avatar}>{getInitials(user.email)}</span>
-            <span className={styles.profileText}>
-              <span className={styles.profileNameRow}>
-                <span className={styles.profileName}>{displayName(user.email)}</span>
-                <span className={styles.profileRole}>{user.userType}</span>
-              </span>
-              <span className={styles.profileEmail}>{user.email}</span>
-            </span>
-            <ChevronDown size={18} aria-hidden />
+            <UserAvatar seed={user.id} size={36} />
+            <ChevronDown size={16} className={styles.profileChevron} aria-hidden />
           </button>
 
           {menuOpen ? (

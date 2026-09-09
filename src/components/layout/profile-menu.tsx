@@ -15,11 +15,8 @@ import {
   Typography,
 } from "@mui/material";
 import { IconSettings, IconLogout, IconUser } from "@tabler/icons-react";
+import { UserAvatar } from "@/components/users/user-avatar";
 import type { DashboardUser } from "@/lib/auth/types";
-
-function getInitials(email: string) {
-  return email.slice(0, 2).toUpperCase();
-}
 
 type ProfileMenuProps = {
   user: DashboardUser;
@@ -52,8 +49,8 @@ export function ProfileMenu({ user }: ProfileMenuProps) {
           ...(anchorEl && { color: "primary.main" }),
         }}
       >
-        <Avatar sx={{ width: 35, height: 35, bgcolor: "primary.main", fontSize: 14 }}>
-          {getInitials(user.email)}
+        <Avatar sx={{ width: 35, height: 35, bgcolor: "transparent", p: 0 }}>
+          <UserAvatar seed={user.id} size={35} />
         </Avatar>
       </IconButton>
       <Menu

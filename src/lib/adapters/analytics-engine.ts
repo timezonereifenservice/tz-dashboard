@@ -1,4 +1,5 @@
 import type {
+  AnalyticsDailyPoint,
   AnalyticsPeriod,
   AnalyticsSnapshot,
   BreakdownRow,
@@ -22,6 +23,25 @@ export type RawAnalyticsEvent = {
 
 function periodDays(period: AnalyticsPeriod) {
   return period === "7d" ? 7 : 30;
+}
+
+function dayBoundsUtc(offsetDays: number) {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - offsetDays);
+
+  const end = new Date(start);
+  end.setUTCHours(23, 59, 59, 999);
+
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function formatDayLabel(dateIso: string) {
+  const date = new Date(`${dateIso}T00:00:00.000Z`);
+  return new Intl.DateTimeFormat("en-GB", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
 }
 
 function sinceIso(days: number) {
@@ -83,6 +103,85 @@ function humanizeKey(key: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+export function buildDailySeries(
+  period: AnalyticsPeriod,
+  events: RawAnalyticsEvent[],
+  leads: UnifiedLead[],
+): AnalyticsDailyPoint[] {
+  const days = periodDays(period);
+  const series: AnalyticsDailyPoint[] = [];
+
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const { start, end } = dayBoundsUtc(offset);
+    const date = start.slice(0, 10);
+    const dayEvents = events.filter(
+      (event) => event.createdAt >= start && event.createdAt <= end,
+    );
+    const dayLeads = leads.filter(
+      (lead) => lead.createdAt >= start && lead.createdAt <= end,
+    );
+
+    series.push({
+      date,
+      label: formatDayLabel(date),
+      visitors: countUniqueVisitors(dayEvents),
+      leads: dayLeads.length,
+    });
+  }
+
+  return series;
+}
+
+export type AnalyticsView = {
+  snapshot: AnalyticsSnapshot;
+  dailySeries: AnalyticsDailyPoint[];
+  previousVisitors: number;
+  previousLeads: number;
+  previousCtaClicks: number;
+  consentAccepted: number;
+  consentTotal: number;
+};
+
+export function buildAnalyticsView(
+  period: AnalyticsPeriod,
+  events: RawAnalyticsEvent[],
+  leads: UnifiedLead[],
+): AnalyticsView {
+  const days = periodDays(period);
+  const currentSince = sinceIso(days);
+  const previousSince = sinceIso(days * 2);
+
+  const currentEvents = events.filter((event) => event.createdAt >= currentSince);
+  const previousEvents = events.filter(
+    (event) =>
+      event.createdAt >= previousSince && event.createdAt < currentSince,
+  );
+  const currentLeads = leads.filter((lead) => lead.createdAt >= currentSince);
+  const previousLeads = leads.filter(
+    (lead) =>
+      lead.createdAt >= previousSince && lead.createdAt < currentSince,
+  );
+
+  const consentEvents = currentEvents.filter(
+    (event) => event.eventType === "consent",
+  );
+  const consentAccepted = consentEvents.filter(
+    (event) => event.consentValue === "accepted",
+  ).length;
+
+  return {
+    snapshot: buildAnalyticsSnapshot(period, events, leads),
+    dailySeries: buildDailySeries(period, events, leads),
+    previousVisitors: countUniqueVisitors(previousEvents),
+    previousLeads: previousLeads.length,
+    previousCtaClicks: previousEvents.filter(
+      (event) => event.eventType === "cta_click",
+    ).length,
+    consentAccepted,
+    consentTotal: consentEvents.length,
+  };
+}
+
 export function buildAnalyticsSnapshot(
   period: AnalyticsPeriod,
   events: RawAnalyticsEvent[],
@@ -130,8 +229,13 @@ export function buildAnalyticsSnapshot(
     .sort((a, b) => b.views - a.views)
     .slice(0, 10);
 
+  const currentCtaEvents = currentEvents.filter((e) => e.eventType === "cta_click");
+  const previousCtaEvents = previousEvents.filter((e) => e.eventType === "cta_click");
+  const ctaClicks = currentCtaEvents.length;
+  const previousCtaClicks = previousCtaEvents.length;
+
   const ctaCounts = new Map<string, number>();
-  for (const evt of currentEvents.filter((e) => e.eventType === "cta_click")) {
+  for (const evt of currentCtaEvents) {
     const id = evt.ctaId || "unknown";
     ctaCounts.set(id, (ctaCounts.get(id) ?? 0) + 1);
   }
@@ -150,8 +254,10 @@ export function buildAnalyticsSnapshot(
       conversionRate:
         visitors > 0 ? Number(((leadsCount / visitors) * 100).toFixed(2)) : 0,
       consentRate,
+      ctaClicks,
       visitorsChangePct: pctChange(visitors, previousVisitors),
       leadsChangePct: pctChange(leadsCount, previousLeadsCount),
+      ctaClicksChangePct: pctChange(ctaClicks, previousCtaClicks),
     },
     countries: buildBreakdown(currentEvents, "country", (k) => k.toUpperCase()),
     devices: buildBreakdown(currentEvents, "device", (k) => k),
@@ -170,6 +276,9 @@ export function buildAnalyticsSnapshot(
         id,
         label: humanizeKey(id),
         clicks,
+        sharePct: ctaClicks ? Math.round((clicks / ctaClicks) * 100) : 0,
+        ctrPct:
+          visitors > 0 ? Number(((clicks / visitors) * 100).toFixed(2)) : 0,
       }))
       .sort((a, b) => b.clicks - a.clicks)
       .slice(0, 10),
@@ -184,8 +293,10 @@ export function emptyAnalyticsSnapshot(period: AnalyticsPeriod): AnalyticsSnapsh
       leads: 0,
       conversionRate: 0,
       consentRate: 0,
+      ctaClicks: 0,
       visitorsChangePct: 0,
       leadsChangePct: 0,
+      ctaClicksChangePct: 0,
     },
     countries: [],
     devices: [],

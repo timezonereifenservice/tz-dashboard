@@ -43,12 +43,11 @@ export function EmptyTableState({
             {resetLabel}
           </button>
         ) : null}
-        {onSecondaryAction || secondaryDisabled ? (
+        {onSecondaryAction ? (
           <button
             type="button"
             className={styles.secondaryAction}
             disabled={secondaryDisabled}
-            title={secondaryDisabled ? "Coming soon" : undefined}
             onClick={onSecondaryAction}
           >
             <UserPlus size={18} aria-hidden />

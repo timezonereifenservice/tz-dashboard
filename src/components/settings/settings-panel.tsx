@@ -10,15 +10,11 @@ import {
   Globe,
   Lock,
   Shield,
-  ShieldCheck,
 } from "lucide-react";
+import { UserAvatar } from "@/components/users/user-avatar";
 import type { DashboardUser } from "@/lib/auth/types";
 import type { ProjectConfig } from "@/lib/projects/config";
-import {
-  formatBlogDate,
-  formatRelativeTime,
-  getInitials,
-} from "@/lib/utils";
+import { formatBlogDate, formatRelativeTime } from "@/lib/utils";
 import styles from "./settings.module.css";
 
 type SessionInfo = {
@@ -387,7 +383,7 @@ export function SettingsPanel({
         <aside className={styles.sideColumn}>
           <section className={`${styles.card} ${styles.profileCard}`}>
             <div className={styles.profileHead}>
-              <div className={styles.avatar}>{getInitials(name)}</div>
+              <UserAvatar seed={user.id} size={48} />
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <h3 className={styles.profileName}>{name}</h3>
@@ -415,24 +411,6 @@ export function SettingsPanel({
                 ))}
               </p>
             </div>
-          </section>
-
-          <section className={`${styles.card} ${styles.cardBody}`}>
-            <div className={styles.sideCardTitleRow}>
-              <div className={styles.sideCardTitleWrap}>
-                <div className={`${styles.sideCardIcon} ${styles.sideCardIconMuted}`}>
-                  <ShieldCheck size={16} aria-hidden />
-                </div>
-                <h3 className={styles.sideCardTitle}>Two-Factor Authentication</h3>
-              </div>
-              <span className={`${styles.statusBadge} ${styles.statusBadgeMuted}`}>
-                Not Enabled
-              </span>
-            </div>
-            <p className={styles.sideCardText}>
-              Two-factor authentication is not configured for ConsoleHub accounts yet. Password
-              changes and session management remain available on this page.
-            </p>
           </section>
 
           <section className={`${styles.card} ${styles.cardBody}`}>

@@ -23,7 +23,12 @@ export default async function OverviewPage({ params }: PageProps) {
     const adapter = getAdapter(project.id as ProjectId);
     metrics = await adapter.getOverviewMetrics();
     const leads = await adapter.listLeads();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+    const cutoff = thirtyDaysAgo.toISOString();
+
     recentLeads = [...leads]
+      .filter((lead) => lead.createdAt >= cutoff)
       .sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -59,9 +64,8 @@ export default async function OverviewPage({ params }: PageProps) {
       id: "chatbot",
       href: `/${slug}/chatbot-leads`,
       title: "Chatbot Inquiries",
-      description: "Automated Spedition quote requests from site widget.",
+      description: "Automated inquiries captured from the website chatbot widget.",
       icon: "chatbot",
-      hint: "TZ ONLY",
     });
   }
 

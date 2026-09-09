@@ -27,7 +27,6 @@ export default async function BlogsPage({ params }: PageProps) {
 
   let blogs: UnifiedBlog[] = [];
   let error: string | null = null;
-  const syncedAt = new Date().toISOString();
 
   try {
     blogs = await adapter.listBlogs();
@@ -45,7 +44,6 @@ export default async function BlogsPage({ params }: PageProps) {
       project={project}
       blogs={blogs}
       error={error}
-      syncedAt={syncedAt}
       canCreate={canCreate}
     />
   );

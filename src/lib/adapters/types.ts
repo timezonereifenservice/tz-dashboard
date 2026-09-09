@@ -24,6 +24,33 @@ export type BreakdownRow = {
   sharePct: number;
 };
 
+export type AnalyticsDailyPoint = {
+  date: string;
+  label: string;
+  visitors: number;
+  leads: number;
+};
+
+export type AnalyticsRawEvent = {
+  id: string;
+  createdAt: string;
+  eventType: string;
+  path: string;
+  ctaId?: string;
+  consentValue?: string;
+  sessionId?: string;
+  visitorId?: string;
+  country?: string;
+  device?: string;
+  browser?: string;
+  locale?: string;
+};
+
+export type AnalyticsRawData = {
+  events: AnalyticsRawEvent[];
+  leads: UnifiedLead[];
+};
+
 export type AnalyticsSnapshot = {
   period: AnalyticsPeriod;
   kpis: {
@@ -31,8 +58,10 @@ export type AnalyticsSnapshot = {
     leads: number;
     conversionRate: number;
     consentRate: number;
+    ctaClicks: number;
     visitorsChangePct: number;
     leadsChangePct: number;
+    ctaClicksChangePct: number;
   };
   countries: BreakdownRow[];
   devices: BreakdownRow[];
@@ -52,6 +81,8 @@ export type AnalyticsSnapshot = {
     id: string;
     label: string;
     clicks: number;
+    sharePct: number;
+    ctrPct: number;
   }>;
 };
 
@@ -78,6 +109,7 @@ export type UnifiedBlog = {
 export interface ProjectAdapter {
   getOverviewMetrics(): Promise<OverviewMetrics>;
   getAnalyticsSnapshot(period: AnalyticsPeriod): Promise<AnalyticsSnapshot>;
+  getAnalyticsRawData(period: AnalyticsPeriod): Promise<AnalyticsRawData>;
   listLeads(options?: { chatbotOnly?: boolean }): Promise<UnifiedLead[]>;
   getLead(id: string): Promise<UnifiedLead | null>;
   updateLeadStatus(id: string, status: string): Promise<UnifiedLead>;

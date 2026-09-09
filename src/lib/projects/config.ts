@@ -23,7 +23,7 @@ export const PROJECTS: ProjectConfig[] = [
     slug: "take-bring",
     description: "take-bring.com logistics website",
     databaseEnvKey: "TAKE_BRING_DATABASE_URL",
-    features: ["overview", "analytics", "leads", "blogs"],
+    features: ["overview", "analytics", "leads", "blogs", "chatbot-leads"],
   },
   {
     id: "tz-transport",

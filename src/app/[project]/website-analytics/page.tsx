@@ -2,15 +2,16 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { AnalyticsPanel } from "@/components/analytics/analytics-panel";
 import { getAdapter } from "@/lib/adapters/registry";
-import { emptyAnalyticsSnapshot } from "@/lib/adapters/analytics-engine";
 import { getErrorMessage } from "@/lib/adapters/errors";
-import type { AnalyticsPeriod } from "@/lib/adapters/types";
+import type { AnalyticsPeriod, AnalyticsRawData } from "@/lib/adapters/types";
 import { getProjectBySlug, type ProjectId } from "@/lib/projects/config";
 
 type PageProps = {
   params: Promise<{ project: string }>;
   searchParams: Promise<{ period?: string }>;
 };
+
+const EMPTY_RAW_DATA: AnalyticsRawData = { events: [], leads: [] };
 
 export default async function WebsiteAnalyticsPage({
   params,
@@ -23,10 +24,10 @@ export default async function WebsiteAnalyticsPage({
 
   const period: AnalyticsPeriod = periodParam === "7d" ? "7d" : "30d";
 
-  let snapshot = emptyAnalyticsSnapshot(period);
+  let rawData = EMPTY_RAW_DATA;
   let error: string | null = null;
   try {
-    snapshot = await getAdapter(project.id as ProjectId).getAnalyticsSnapshot(
+    rawData = await getAdapter(project.id as ProjectId).getAnalyticsRawData(
       period,
     );
   } catch (e) {
@@ -39,7 +40,7 @@ export default async function WebsiteAnalyticsPage({
       <AnalyticsPanel
         project={project}
         initialPeriod={period}
-        snapshot={snapshot}
+        rawData={rawData}
         error={error}
       />
     </Suspense>

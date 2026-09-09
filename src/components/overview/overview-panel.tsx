@@ -15,7 +15,6 @@ import {
   RefreshCw,
   Truck,
   Users,
-  X,
 } from "lucide-react";
 import type { UnifiedLead } from "@/lib/adapters/types";
 import type { OverviewMetrics } from "@/lib/adapters/types";
@@ -76,7 +75,6 @@ export function OverviewPanel({
   const router = useRouter();
   const meta = getProjectMeta(project.id);
   const [refreshing, setRefreshing] = useState(false);
-  const [showNotice, setShowNotice] = useState(true);
   const [showError, setShowError] = useState(Boolean(error));
 
   async function refreshData() {
@@ -115,12 +113,6 @@ export function OverviewPanel({
         <div className={styles.titleBlock}>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>Overview</h1>
-            {!error ? (
-              <span className={styles.connectedBadge}>
-                <span className={styles.connectedDot} aria-hidden />
-                Connected to Production DB
-              </span>
-            ) : null}
           </div>
           <p className={styles.description}>
             Performance snapshot and quick operations for{" "}
@@ -138,12 +130,6 @@ export function OverviewPanel({
         </div>
 
         <div className={styles.controls}>
-          <div className={styles.projectChip}>
-            <span className={styles.chipDot} aria-hidden />
-            <span>{project.name}</span>
-            <span className={styles.chipMuted}>•</span>
-            <span className={styles.chipMuted}>{meta.category}</span>
-          </div>
           <button
             type="button"
             className={styles.refreshButton}
@@ -169,31 +155,6 @@ export function OverviewPanel({
           onRetry={() => router.refresh()}
           onDismiss={() => setShowError(false)}
         />
-      ) : null}
-
-      {!error && showNotice ? (
-        <div className={styles.banner}>
-          <div className={styles.bannerBody}>
-            <div className={styles.bannerIcon}>
-              <RefreshCw size={20} aria-hidden />
-            </div>
-            <div className={styles.bannerText}>
-              <span className={styles.bannerTitle}>Telemetry Notice:</span>
-              <p className={styles.bannerMessage}>
-                Live analytics synchronized for {project.name}. Data refreshes on
-                each visit.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className={styles.bannerDismiss}
-            aria-label="Dismiss notice"
-            onClick={() => setShowNotice(false)}
-          >
-            <X size={20} aria-hidden />
-          </button>
-        </div>
       ) : null}
 
       <div className={styles.kpiGrid}>
@@ -318,15 +279,18 @@ export function OverviewPanel({
 
         <section className={styles.panel}>
           <div className={styles.inquiryHeader}>
-            <div className={styles.inquiryTitleRow}>
-              <h2 className={styles.panelTitle}>Recent Inquiries</h2>
-              <span className={styles.priorityBadge}>Priority</span>
+            <div>
+              <h2 className={styles.panelTitle}>Recent Inquiries (30 days)</h2>
+              <p className={styles.panelSubtitle}>
+                Latest submissions from the last 30 days
+              </p>
             </div>
-            <span className={styles.telemetryLabel}>Real-time</span>
           </div>
 
           {recentLeads.length === 0 ? (
-            <div className={styles.emptyInquiries}>No recent inquiries yet</div>
+            <div className={styles.emptyInquiries}>
+              No inquiries in the last 30 days
+            </div>
           ) : (
             <div className={styles.inquiryList}>
               {recentLeads.map((lead, index) => (
@@ -367,10 +331,9 @@ export function OverviewPanel({
 
           <div className={styles.inquiryFooter}>
             <Link href={`/${project.slug}/leads`} className={styles.viewAllLink}>
-              View all {formatNumber(metrics.newLeads30d || metrics.totalLeads)} leads
+              View all {formatNumber(metrics.totalLeads)} leads
               <ArrowRight size={18} aria-hidden />
             </Link>
-            <span className={styles.telemetryLabel}>Sorted by newest</span>
           </div>
         </section>
       </div>
