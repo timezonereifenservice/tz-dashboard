@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import { MuiThemeProvider } from "@/providers/mui-theme-provider";
 import { brand } from "@/lib/brand";
 import "./globals.css";
@@ -23,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <MuiThemeProvider>{children}</MuiThemeProvider>
+        <MuiThemeProvider>
+          {children}
+          <Toaster richColors closeButton position="top-right" />
+        </MuiThemeProvider>
       </body>
     </html>
   );

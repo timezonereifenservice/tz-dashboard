@@ -8,6 +8,7 @@ export type CreateBlogInput = {
   seoTitle?: string;
   seoDescription?: string;
   category?: string;
+  dateLabel?: string;
   bodyHtml: string;
   coverImageAssetId: string;
   coverImageUrl: string;

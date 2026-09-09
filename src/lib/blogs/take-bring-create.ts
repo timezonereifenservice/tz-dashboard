@@ -7,38 +7,21 @@ import {
   normalizeBlogSlug,
 } from "@/lib/blogs/helpers";
 import { prepareBlogImagePersistence } from "@/lib/blogs/persist-image";
-import type {
-  CreateBlogInput,
-  CreatedBlog,
-  UploadedBlogImage,
-} from "@/lib/blogs/types";
+import {
+  mapBlogImageRow,
+  mapBlogRow,
+  type BlogImageRow,
+  type BlogRow,
+} from "@/lib/dashboard-blogs/map";
+import type { BlogImageAsset, DashboardBlog } from "@/lib/dashboard-blogs/types";
+import type { CreateBlogInput, UploadedBlogImage } from "@/lib/blogs/types";
 import {
   getTakeBringSupabase,
   isTakeBringSupabaseConfigured,
 } from "@/lib/supabase/take-bring";
 
-type BlogRow = {
-  id: string;
-  title: string;
-  slug: string;
-  status: "DRAFT" | "PUBLISHED";
-  published_at: string | null;
-  updated_at: string;
-};
-
 const BLOG_RETURN =
-  "id, title, slug, status, published_at, updated_at" as const;
-
-function mapCreatedBlog(row: BlogRow): CreatedBlog {
-  return {
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    status: row.status,
-    publishedAt: row.published_at,
-    updatedAt: row.updated_at,
-  };
-}
+  "id, title, slug, excerpt, status, seo_title, seo_description, category, date_label, body_html, cover_image_url, cover_image_asset_id, views_count, published_at, created_at, updated_at" as const;
 
 async function uploadTakeBringBlogImagePg(input: {
   file: File;
@@ -107,7 +90,7 @@ export async function uploadTakeBringBlogImage(input: {
 
 async function createTakeBringBlogSupabase(
   input: CreateBlogInput,
-): Promise<CreatedBlog> {
+): Promise<DashboardBlog> {
   const supabase = getTakeBringSupabase();
   if (!supabase) throw new Error("Take & Bring database is not configured.");
 
@@ -126,7 +109,7 @@ async function createTakeBringBlogSupabase(
       seo_title: input.seoTitle?.trim() || "",
       seo_description: input.seoDescription?.trim() || "",
       category: input.category?.trim() || "General",
-      date_label: formatBlogDateLabel(),
+      date_label: input.dateLabel?.trim() || formatBlogDateLabel(),
       body_html: input.bodyHtml,
       cover_image_url: input.coverImageUrl.trim(),
       cover_image_asset_id: input.coverImageAssetId,
@@ -138,12 +121,12 @@ async function createTakeBringBlogSupabase(
     .single();
 
   if (error) throw new Error(error.message);
-  return mapCreatedBlog(data as BlogRow);
+  return mapBlogRow(data as BlogRow);
 }
 
 async function createTakeBringBlogPg(
   input: CreateBlogInput,
-): Promise<CreatedBlog> {
+): Promise<DashboardBlog> {
   const baseSlug = normalizeBlogSlug(input.title, input.slug);
   const slug = await ensureUniqueBlogSlug("take-bring", baseSlug);
   const status = input.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
@@ -163,7 +146,7 @@ async function createTakeBringBlogPg(
       input.seoTitle?.trim() || "",
       input.seoDescription?.trim() || "",
       input.category?.trim() || "General",
-      formatBlogDateLabel(),
+      input.dateLabel?.trim() || formatBlogDateLabel(),
       input.bodyHtml,
       input.coverImageUrl.trim(),
       input.coverImageAssetId,
@@ -173,12 +156,39 @@ async function createTakeBringBlogPg(
 
   const row = rows[0];
   if (!row) throw new Error("Failed to create blog.");
-  return mapCreatedBlog(row);
+  return mapBlogRow(row);
+}
+
+export async function listTakeBringBlogImages(): Promise<BlogImageAsset[]> {
+  const { rows } = await projectQuery<BlogImageRow>(
+    "take-bring",
+    `SELECT id, public_url, alt_text, created_at
+     FROM blog_image_assets
+     ORDER BY created_at DESC`,
+  );
+  return rows.map(mapBlogImageRow);
+}
+
+export async function getTakeBringBlogImageFile(imageId: string) {
+  const { rows } = await projectQuery<{
+    file_data: Buffer | null;
+    mime_type: string | null;
+  }>(
+    "take-bring",
+    `SELECT file_data, mime_type FROM blog_image_assets WHERE id = $1`,
+    [imageId],
+  );
+  const row = rows[0];
+  if (!row?.file_data) return null;
+  return {
+    data: row.file_data,
+    mimeType: row.mime_type ?? "image/webp",
+  };
 }
 
 export async function createTakeBringBlog(
   input: CreateBlogInput,
-): Promise<CreatedBlog> {
+): Promise<DashboardBlog> {
   if (!input.title.trim()) throw new Error("Blog title is required.");
   if (!input.bodyHtml.trim()) throw new Error("Blog body is required.");
   if (!input.coverImageAssetId.trim() || !input.coverImageUrl.trim()) {

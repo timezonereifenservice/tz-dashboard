@@ -45,7 +45,15 @@ export async function createProjectBlog(
     return createTzTransportBlog(input, authorId);
   }
   if (projectId === "take-bring") {
-    return createTakeBringBlog(input);
+    const blog = await createTakeBringBlog(input);
+    return {
+      id: blog.id,
+      title: blog.title,
+      slug: blog.slug,
+      status: blog.status,
+      publishedAt: blog.publishedAt ?? null,
+      updatedAt: blog.updatedAt,
+    };
   }
   throw new Error("Blog creation is not supported for this project.");
 }

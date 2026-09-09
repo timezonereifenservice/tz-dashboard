@@ -13,6 +13,7 @@ import {
   UserX,
 } from "lucide-react";
 import { CreateUserModal } from "@/components/users/create-user-modal";
+import { UserAvatar } from "@/components/users/user-avatar";
 import {
   ConnectivityErrorBanner,
   EmptyTableState,
@@ -20,7 +21,7 @@ import {
 } from "@/components/system";
 import type { UserType } from "@/lib/projects/access";
 import type { HubUser } from "@/lib/users/types";
-import { formatBlogDate, formatRelativeTime, getInitials } from "@/lib/utils";
+import { formatBlogDate, formatRelativeTime } from "@/lib/utils";
 import styles from "./users.module.css";
 
 type UsersPanelProps = {
@@ -272,10 +273,21 @@ export function UsersPanel({
                 </tr>
               ) : (
                 filtered.map((user) => (
-                  <tr key={user.id}>
+                  <tr
+                    key={user.id}
+                    className={styles.clickableRow}
+                    tabIndex={0}
+                    onClick={() => router.push(`/users/${user.id}`)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push(`/users/${user.id}`);
+                      }
+                    }}
+                  >
                     <td>
                       <div className={styles.userCell}>
-                        <span className={styles.avatar}>{getInitials(user.email)}</span>
+                        <UserAvatar seed={user.id} size={36} />
                         <div>
                           <div className={styles.userEmailRow}>
                             <span className={styles.userEmail}>{user.email}</span>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getNavItems, settingsNavItem, usersNavItem } from "@/lib/dashboard-nav";
+import { settingsNavItem, usersNavItem } from "@/lib/dashboard-nav";
+import { getNavItemsForUser } from "@/lib/users/nav-permissions";
 import { brand } from "@/lib/brand";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -27,7 +28,11 @@ export function AppSidebar({
   onNavigate,
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const navItems = getNavItems(currentProject.id);
+  const navItems = getNavItemsForUser(
+    currentProject.id,
+    user.userType,
+    user.navPermissions,
+  );
 
   return (
     <aside

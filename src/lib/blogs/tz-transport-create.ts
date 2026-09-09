@@ -8,6 +8,8 @@ import {
   normalizeBlogSlug,
 } from "@/lib/blogs/helpers";
 import { prepareBlogImagePersistence } from "@/lib/blogs/persist-image";
+import { adminBlogFromSqlRow } from "@/lib/blogs/adminBlogFromSqlRow";
+import { adminBlogImageFromSqlRow } from "@/lib/blogs/adminBlogImageFromSqlRow";
 import type {
   CreateBlogInput,
   CreatedBlog,
@@ -31,6 +33,33 @@ function mapCreatedBlog(row: BlogRow): CreatedBlog {
     status: row.status,
     publishedAt: row.published_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export async function listTzTransportBlogImages() {
+  const { rows } = await projectQuery<Record<string, unknown>>(
+    "tz-transport",
+    `SELECT id, original_file_name, mime_type, storage_path, public_url, width, height, size_bytes, source_type, alt_text, uploaded_by_user_id, created_at
+     FROM blog_image_assets
+     ORDER BY created_at DESC`,
+  );
+  return rows.map(adminBlogImageFromSqlRow);
+}
+
+export async function getTzTransportBlogImageFile(imageId: string) {
+  const { rows } = await projectQuery<{
+    file_data: Buffer | null;
+    mime_type: string | null;
+  }>(
+    "tz-transport",
+    `SELECT file_data, mime_type FROM blog_image_assets WHERE id = $1`,
+    [imageId],
+  );
+  const row = rows[0];
+  if (!row?.file_data) return null;
+  return {
+    data: row.file_data,
+    mimeType: row.mime_type ?? "image/webp",
   };
 }
 
@@ -89,10 +118,10 @@ export async function uploadTzTransportBlogImage(input: {
   };
 }
 
-export async function createTzTransportBlog(
+export async function createTzTransportBlogRecord(
   input: CreateBlogInput,
   authorId: string,
-): Promise<CreatedBlog> {
+) {
   if (!input.title.trim()) throw new Error("Blog title is required.");
   if (!input.bodyHtml.trim()) throw new Error("Blog body is required.");
   if (!input.coverImageAssetId.trim()) throw new Error("Cover image is required.");
@@ -101,10 +130,9 @@ export async function createTzTransportBlog(
   const slug = await ensureUniqueBlogSlug("tz-transport", baseSlug);
   const status = input.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
   const publishedAt = status === "PUBLISHED" ? new Date() : null;
-  const dateLabel = formatBlogDateLabel();
   const contentJson = {
     category: input.category?.trim() || "General",
-    date: dateLabel,
+    date: input.dateLabel?.trim() || formatBlogDateLabel(),
     bodyHtml: input.bodyHtml,
   };
   const blogId = crypto.randomUUID();
@@ -131,7 +159,7 @@ export async function createTzTransportBlog(
        (id, title, slug, excerpt, status, layout_id, author_id, cover_image_asset_id, seo_title, seo_description, content_json, published_at, views_count, created_at, updated_at)
        VALUES
        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, NOW(), NOW())
-       RETURNING id, title, slug, status, published_at, updated_at`,
+       RETURNING *`,
       [
         blogId,
         input.title.trim(),
@@ -159,5 +187,20 @@ export async function createTzTransportBlog(
     return blog;
   });
 
-  return mapCreatedBlog(row);
+  return adminBlogFromSqlRow(row as Record<string, unknown>);
+}
+
+export async function createTzTransportBlog(
+  input: CreateBlogInput,
+  authorId: string,
+): Promise<CreatedBlog> {
+  const blog = await createTzTransportBlogRecord(input, authorId);
+  return {
+    id: blog.id,
+    title: blog.title,
+    slug: blog.slug,
+    status: blog.status,
+    publishedAt: blog.publishedAt ? String(blog.publishedAt) : null,
+    updatedAt: String(blog.updatedAt),
+  };
 }

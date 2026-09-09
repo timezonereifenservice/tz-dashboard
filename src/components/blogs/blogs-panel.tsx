@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -20,13 +21,7 @@ import {
   ShieldCheck,
   TrendingUp,
 } from "lucide-react";
-import { CreateBlogModal } from "@/components/blogs/create-blog-modal";
-import {
-  ConnectivityErrorBanner,
-  EmptyTableState,
-  ToastNotification,
-} from "@/components/system";
-import type { BlogStatus } from "@/lib/blogs/types";
+import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
 import type { UnifiedBlog } from "@/lib/adapters/types";
 import { getProjectMeta } from "@/lib/projects/meta";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -121,13 +116,6 @@ export function BlogsPanel({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncPending, setSyncPending] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [createPending, setCreatePending] = useState(false);
-  const [toast, setToast] = useState<{
-    variant: "success" | "error";
-    title: string;
-    meta?: string;
-  } | null>(null);
 
   const localeOptions = useMemo(() => {
     const values = new Set<string>();
@@ -231,71 +219,6 @@ export function BlogsPanel({
     window.setTimeout(() => setCopiedSlug(null), 1500);
   }
 
-  async function handleCreateBlog(input: {
-    title: string;
-    slug: string;
-    excerpt: string;
-    category: string;
-    bodyHtml: string;
-    status: BlogStatus;
-    seoTitle: string;
-    seoDescription: string;
-    coverFile: File;
-  }) {
-    setCreatePending(true);
-    try {
-      const imageForm = new FormData();
-      imageForm.append("file", input.coverFile);
-      imageForm.append("altText", input.title);
-
-      const imageResponse = await fetch(`/api/${project.id}/blog-images`, {
-        method: "POST",
-        body: imageForm,
-      });
-      const imagePayload = (await imageResponse.json()) as {
-        message?: string;
-        image?: { id: string; publicUrl: string };
-      };
-      if (!imageResponse.ok || !imagePayload.image) {
-        throw new Error(imagePayload.message ?? "Unable to upload cover image.");
-      }
-
-      const blogResponse = await fetch(`/api/${project.id}/blogs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: input.title,
-          slug: input.slug || undefined,
-          excerpt: input.excerpt,
-          category: input.category,
-          bodyHtml: input.bodyHtml,
-          status: input.status,
-          seoTitle: input.seoTitle,
-          seoDescription: input.seoDescription,
-          coverImageAssetId: imagePayload.image.id,
-          coverImageUrl: imagePayload.image.publicUrl,
-        }),
-      });
-      const blogPayload = (await blogResponse.json()) as {
-        message?: string;
-        blog?: { title: string; slug: string };
-      };
-      if (!blogResponse.ok) {
-        throw new Error(blogPayload.message ?? "Unable to create blog.");
-      }
-
-      setModalOpen(false);
-      setToast({
-        variant: "success",
-        title: "Blog created",
-        meta: `${blogPayload.blog?.title ?? input.title} saved to ${project.name}.`,
-      });
-      router.refresh();
-    } finally {
-      setCreatePending(false);
-    }
-  }
-
   const activeFilters = [
     statusFilter !== "ALL" ? `Status: ${statusFilter}` : null,
     localeFilter !== "ALL" ? `Language: ${localeFilter}` : null,
@@ -304,14 +227,6 @@ export function BlogsPanel({
 
   return (
     <div className={styles.page}>
-      {toast ? (
-        <ToastNotification
-          variant={toast.variant}
-          title={toast.title}
-          meta={toast.meta}
-        />
-      ) : null}
-
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.titleRow}>
@@ -351,14 +266,13 @@ export function BlogsPanel({
             {syncPending ? "Refreshing…" : "Refresh"}
           </button>
           {canCreate ? (
-            <button
-              type="button"
+            <Link
+              href={`/${project.id}/blogs/create-new`}
               className={styles.primaryButton}
-              onClick={() => setModalOpen(true)}
             >
               <Plus size={16} aria-hidden />
               Create blog
-            </button>
+            </Link>
           ) : null}
           <a
             className={styles.primaryButton}
@@ -787,18 +701,6 @@ export function BlogsPanel({
         </div>
       </div>
 
-      {canCreate ? (
-        <CreateBlogModal
-          open={modalOpen}
-          pending={createPending}
-          projectId={project.id}
-          projectName={project.name}
-          onClose={() => {
-            if (!createPending) setModalOpen(false);
-          }}
-          onSubmit={handleCreateBlog}
-        />
-      ) : null}
     </div>
   );
 }

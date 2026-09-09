@@ -3,12 +3,14 @@ import { getAccessTokenFromCookies } from "@/lib/auth/cookies";
 import { verifyAccessToken } from "@/lib/auth/tokens";
 import type { UserType } from "@/lib/projects/access";
 import type { DashboardUser } from "@/lib/auth/types";
+import { parseUserNavPermissions } from "@/lib/users/nav-permissions";
 
 type SessionUserRow = {
   user_id: string;
   email: string;
   user_type: UserType;
   is_active: boolean;
+  nav_permissions_json: unknown;
 };
 
 export type { DashboardUser };
@@ -25,7 +27,8 @@ export async function getCurrentUser(): Promise<DashboardUser | null> {
       u.id AS user_id,
       u.email,
       u.user_type,
-      u.is_active
+      u.is_active,
+      u.nav_permissions_json
     FROM auth_sessions s
     INNER JOIN users u ON u.id = s.user_id
     WHERE s.id = $1
@@ -46,6 +49,7 @@ export async function getCurrentUser(): Promise<DashboardUser | null> {
     email: session.email,
     userType: session.user_type,
     isActive: session.is_active,
+    navPermissions: parseUserNavPermissions(session.nav_permissions_json),
   };
 }
 
