@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
 import { getNavItems, settingsNavItem } from "@/lib/dashboard-nav";
 import { brand } from "@/lib/brand";
-import { getProjectMeta } from "@/lib/projects/meta";
+import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import type { ProjectConfig } from "@/lib/projects/config";
 import type { DashboardUser } from "@/lib/auth/types";
 import styles from "./sidebar.module.css";
@@ -29,7 +28,6 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const pathname = usePathname();
   const navItems = getNavItems(currentProject.id);
-  const meta = getProjectMeta(currentProject.id);
 
   return (
     <aside
@@ -46,32 +44,7 @@ export function AppSidebar({
           </div>
         </div>
 
-        <div className={styles.projectSwitcher}>
-          <label className={styles.projectButton}>
-            <span className={styles.projectInfo}>
-              <span className={styles.projectDot} aria-hidden />
-              <span>
-                <span className={styles.projectName}>{currentProject.name}</span>
-                <span className={styles.projectDomain}>{meta.domain}</span>
-              </span>
-            </span>
-            <ChevronDown size={18} aria-hidden />
-            <select
-              className={styles.projectSelect}
-              value={currentProject.id}
-              aria-label="Switch project"
-              onChange={(e) => {
-                window.location.href = `/${e.target.value}/overview`;
-              }}
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <ProjectSwitcher projects={projects} currentProject={currentProject} />
 
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Navigation</span>
