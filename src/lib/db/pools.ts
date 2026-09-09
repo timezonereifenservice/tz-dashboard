@@ -1,4 +1,4 @@
-import { Pool, type QueryResultRow } from "pg";
+import { Pool, type PoolConfig, type QueryResultRow } from "pg";
 import type { ProjectId } from "@/lib/projects/config";
 
 const globalForPools = globalThis as unknown as {
@@ -10,6 +10,55 @@ function getPoolsMap() {
     globalForPools.projectPools = new Map();
   }
   return globalForPools.projectPools;
+}
+
+function isSupabaseSessionPooler(connectionString: string): boolean {
+  if (connectionString.includes(":6543")) return false;
+  return (
+    connectionString.includes("pooler.supabase.com") ||
+    (connectionString.includes(".supabase.co") &&
+      (connectionString.includes(":5432/") || connectionString.includes(":5432?")))
+  );
+}
+
+function isSupabasePooler(connectionString: string): boolean {
+  return (
+    connectionString.includes("pooler.supabase.com") ||
+    connectionString.includes(":6543/") ||
+    connectionString.includes(":6543?")
+  );
+}
+
+function getPoolMax(connectionString: string): number {
+  const override = process.env.PG_POOL_MAX?.trim();
+  if (override) {
+    const parsed = Number.parseInt(override, 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  // Session-mode Supabase pooler (port 5432) shares a hard cap (~15) across all clients.
+  if (isSupabaseSessionPooler(connectionString)) return 1;
+  // Transaction pooler or direct Supabase host — still keep small for serverless.
+  if (isSupabasePooler(connectionString) || connectionString.includes(".supabase.co")) {
+    return 2;
+  }
+  return 4;
+}
+
+function buildPoolConfig(connectionString: string): PoolConfig {
+  const useSsl =
+    connectionString.includes("supabase") ||
+    connectionString.includes("sslmode=require") ||
+    connectionString.includes("sslmode=no-verify");
+
+  return {
+    connectionString,
+    max: getPoolMax(connectionString),
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    allowExitOnIdle: true,
+    ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+  };
 }
 
 function envKeyForProject(projectId: ProjectId): string {
@@ -35,21 +84,17 @@ function getConnectionString(projectId: ProjectId): string | undefined {
 }
 
 export function getProjectPool(projectId: ProjectId): Pool {
-  const pools = getPoolsMap();
-  const existing = pools.get(projectId);
-  if (existing) return existing;
-
   const connectionString = getConnectionString(projectId);
   if (!connectionString) {
     throw new Error(`Missing ${envKeyForProject(projectId)} in environment.`);
   }
 
-  const pool = new Pool({
-    connectionString,
-    max: 8,
-    ssl: { rejectUnauthorized: false },
-  });
-  pools.set(projectId, pool);
+  const pools = getPoolsMap();
+  const existing = pools.get(connectionString);
+  if (existing) return existing;
+
+  const pool = new Pool(buildPoolConfig(connectionString));
+  pools.set(connectionString, pool);
   return pool;
 }
 

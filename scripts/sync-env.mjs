@@ -29,12 +29,15 @@ function pick(env, ...keys) {
   return "";
 }
 
-/** Match tz-transport pooler format (port 5432 + sslmode=no-verify). */
-function normalizePoolerUrl(url) {
+/** Prefer Supabase transaction pooler (6543) for pg — session mode (5432) caps at ~15 clients. */
+function normalizePgPoolUrl(url) {
   if (!url) return "";
-  let normalized = url
-    .replace(":6543/", ":5432/")
-    .replace(":6543?", ":5432?");
+  let normalized = url;
+  if (url.includes("pooler.supabase.com")) {
+    normalized = url
+      .replace(":5432/", ":6543/")
+      .replace(":5432?", ":6543?");
+  }
   if (!normalized.includes("sslmode=")) {
     normalized += normalized.includes("?") ? "&sslmode=no-verify" : "?sslmode=no-verify";
   }
@@ -53,15 +56,15 @@ const takeBring = {
 };
 const reifenservice = parseEnvFile(resolve(consoledot, "tz-refienservice", ".env"));
 
-const takeBringDb = normalizePoolerUrl(
+const takeBringDb = normalizePgPoolUrl(
   pick(takeBring, "DATABASE_URL", "DIRECT_URL"),
 );
-const reifenserviceDb = normalizePoolerUrl(
+const reifenserviceDb = normalizePgPoolUrl(
   pick(reifenservice, "DATABASE_URL", "DIRECT_URL"),
 );
-const tzTransportDb =
-  pick(timeZone, "DATABASE_URL", "DIRECT_URL") ||
-  normalizePoolerUrl(pick(timeZone, "DATABASE_URL", "DIRECT_URL"));
+const tzTransportDb = normalizePgPoolUrl(
+  pick(timeZone, "DATABASE_URL", "DIRECT_URL"),
+);
 
 const lines = [
   "# Synced from sibling projects (npm run sync:env)",
