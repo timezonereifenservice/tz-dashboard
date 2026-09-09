@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, LogOut, Menu, Settings, UserCog } from "lucide-react";
 import { UserAvatar } from "@/components/users/user-avatar";
 import { usersNavItem } from "@/lib/dashboard-nav";
+import { canAccessUsersMenu } from "@/lib/users/nav-permissions";
 import type { ProjectConfig } from "@/lib/projects/config";
 import type { DashboardUser } from "@/lib/auth/types";
 import styles from "./header.module.css";
@@ -89,7 +90,7 @@ export function AppHeader({ currentProject, user, onMenuClick }: AppHeaderProps)
                 <div className={styles.menuEmail}>{user.email}</div>
                 <div className={styles.menuRole}>{user.userType}</div>
               </div>
-              {user.userType === "ADMIN" ? (
+              {canAccessUsersMenu(user.userType, user.navPermissions) ? (
                 <Link
                   href={usersNavItem.href}
                   className={styles.menuLink}

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth/require-admin";
+import {
+  requireAdminUser,
+  requireUsersMenuAccess,
+} from "@/lib/auth/require-admin";
 import type { UserType } from "@/lib/projects/access";
 import {
   getHubUserById,
@@ -27,8 +30,8 @@ function isUserType(value: unknown): value is UserType {
 }
 
 export async function GET(_req: NextRequest, context: RouteContext) {
-  const admin = await requireAdminUser();
-  if (!admin) {
+  const viewer = await requireUsersMenuAccess();
+  if (!viewer) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
@@ -80,6 +83,12 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       if (!nextIsActive) {
         return NextResponse.json(
           { message: "You cannot deactivate your own account." },
+          { status: 400 },
+        );
+      }
+      if (body.navPermissions?.global?.users === false) {
+        return NextResponse.json(
+          { message: "You cannot remove your own Users menu access." },
           { status: 400 },
         );
       }

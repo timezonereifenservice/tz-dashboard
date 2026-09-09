@@ -4,19 +4,66 @@ import {
   getAccessibleProjectIds,
   type UserType,
 } from "@/lib/projects/access";
-import type { ProjectId } from "@/lib/projects/config";
+import { PROJECTS, type ProjectId } from "@/lib/projects/config";
 
 export type ProjectNavPermissions = Record<string, boolean>;
 
+export type GlobalNavPermissions = {
+  users?: boolean;
+};
+
 export type UserNavPermissions = Partial<
   Record<ProjectId, ProjectNavPermissions>
->;
+> & {
+  global?: GlobalNavPermissions;
+};
+
+const PROJECT_IDS = new Set<string>(PROJECTS.map((project) => project.id));
 
 export function parseUserNavPermissions(value: unknown): UserNavPermissions {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
-  return value as UserNavPermissions;
+
+  const raw = value as Record<string, unknown>;
+  const parsed: UserNavPermissions = {};
+
+  if (raw.global && typeof raw.global === "object" && !Array.isArray(raw.global)) {
+    const global = raw.global as Record<string, unknown>;
+    if (typeof global.users === "boolean") {
+      parsed.global = { users: global.users };
+    }
+  }
+
+  for (const [key, permissions] of Object.entries(raw)) {
+    if (key === "global" || !PROJECT_IDS.has(key)) continue;
+    if (!permissions || typeof permissions !== "object" || Array.isArray(permissions)) {
+      continue;
+    }
+    parsed[key as ProjectId] = permissions as ProjectNavPermissions;
+  }
+
+  return parsed;
+}
+
+export function getDefaultUsersMenuAccess(userType: UserType): boolean {
+  return userType === "ADMIN";
+}
+
+export function getEffectiveUsersMenuAccess(
+  userType: UserType,
+  navPermissions: UserNavPermissions,
+): boolean {
+  const stored = navPermissions.global?.users;
+  if (stored !== undefined) return stored;
+  return getDefaultUsersMenuAccess(userType);
+}
+
+export function canAccessUsersMenu(
+  userType: UserType,
+  navPermissions: UserNavPermissions,
+): boolean {
+  return getEffectiveUsersMenuAccess(userType, navPermissions);
 }
 
 export function getDefaultProjectNavPermissions(
@@ -61,6 +108,10 @@ export function sanitizeNavPermissionsForRole(
   const allowedProjects = new Set(getEditableProjectsForRole(userType));
   const sanitized: UserNavPermissions = {};
 
+  if (typeof navPermissions.global?.users === "boolean") {
+    sanitized.global = { users: navPermissions.global.users };
+  }
+
   for (const projectId of allowedProjects) {
     const effective = getEffectiveProjectNavPermissions(
       projectId,
@@ -70,4 +121,17 @@ export function sanitizeNavPermissionsForRole(
   }
 
   return sanitized;
+}
+
+export function setUsersMenuAccess(
+  navPermissions: UserNavPermissions,
+  enabled: boolean,
+): UserNavPermissions {
+  return {
+    ...navPermissions,
+    global: {
+      ...navPermissions.global,
+      users: enabled,
+    },
+  };
 }

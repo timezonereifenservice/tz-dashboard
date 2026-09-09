@@ -3,11 +3,14 @@ import { UsersPanel } from "@/components/users/users-panel";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listHubUsers } from "@/lib/users/queries";
 import type { HubUser } from "@/lib/users/types";
+import { canAccessUsersMenu } from "@/lib/users/nav-permissions";
 
 export default async function UsersPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.userType !== "ADMIN") redirect("/settings");
+  if (!canAccessUsersMenu(user.userType, user.navPermissions)) {
+    redirect("/settings");
+  }
 
   let users: HubUser[] = [];
   let error: string | null = null;
@@ -23,5 +26,12 @@ export default async function UsersPage() {
         : "Unable to load dashboard users right now.";
   }
 
-  return <UsersPanel users={users} currentUserId={user.id} error={error} />;
+  return (
+    <UsersPanel
+      users={users}
+      currentUserId={user.id}
+      canManageUsers={user.userType === "ADMIN"}
+      error={error}
+    />
+  );
 }

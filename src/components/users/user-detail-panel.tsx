@@ -9,6 +9,7 @@ import {
   Save,
   Shield,
   UserCheck,
+  UserCog,
   UserX,
 } from "lucide-react";
 import { UserAvatar } from "@/components/users/user-avatar";
@@ -17,9 +18,12 @@ import type { UserType } from "@/lib/projects/access";
 import { PROJECTS, type ProjectId } from "@/lib/projects/config";
 import {
   getDefaultProjectNavPermissions,
+  getDefaultUsersMenuAccess,
   getEditableProjectsForRole,
   getEffectiveProjectNavPermissions,
+  getEffectiveUsersMenuAccess,
   sanitizeNavPermissionsForRole,
+  setUsersMenuAccess,
   type UserNavPermissions,
 } from "@/lib/users/nav-permissions";
 import { getNavItems } from "@/lib/dashboard-nav";
@@ -101,6 +105,13 @@ export function UserDetailPanel({ user, currentUserId }: UserDetailPanelProps) {
     setNavPermissions((current) =>
       sanitizeNavPermissionsForRole(nextRole, current),
     );
+  }
+
+  const usersMenuAccess = getEffectiveUsersMenuAccess(userType, navPermissions);
+  const defaultUsersMenuAccess = getDefaultUsersMenuAccess(userType);
+
+  function toggleUsersMenuAccess(enabled: boolean) {
+    setNavPermissions((current) => setUsersMenuAccess(current, enabled));
   }
 
   function toggleNavItem(projectId: ProjectId, itemId: string, enabled: boolean) {
@@ -308,6 +319,47 @@ export function UserDetailPanel({ user, currentUserId }: UserDetailPanelProps) {
           </div>
 
           <div className={styles.sectionBody}>
+            <div className={styles.projectNavBlock}>
+              <div className={styles.projectNavHeader}>
+                <div>
+                  <h3 className={styles.projectNavTitle}>Account menu</h3>
+                  <p className={styles.projectNavHint}>
+                    Controls whether the Users item appears in the sidebar
+                    Account section.
+                  </p>
+                </div>
+              </div>
+
+              <label
+                className={`${styles.navCheckItem} ${
+                  isSelf ? styles.checkboxRowDisabled : ""
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={usersMenuAccess}
+                  disabled={pending || isSelf}
+                  onChange={(event) =>
+                    toggleUsersMenuAccess(event.target.checked)
+                  }
+                />
+                <span className={styles.navCheckLabel}>
+                  <UserCog size={16} aria-hidden />
+                  Users management menu
+                </span>
+              </label>
+              <p className={styles.fieldHint}>
+                Default for {userType.toLowerCase()} accounts is{" "}
+                {defaultUsersMenuAccess ? "enabled" : "disabled"}. Only admins
+                can change this setting.
+              </p>
+              {isSelf ? (
+                <p className={styles.fieldHint}>
+                  You cannot remove your own Users menu access.
+                </p>
+              ) : null}
+            </div>
+
             {editableProjects.length === 0 ? (
               <p className={styles.emptyHint}>
                 This role has no property access to configure.

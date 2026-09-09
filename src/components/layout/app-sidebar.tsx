@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { settingsNavItem, usersNavItem } from "@/lib/dashboard-nav";
-import { getNavItemsForUser } from "@/lib/users/nav-permissions";
+import {
+  canAccessUsersMenu,
+  getNavItemsForUser,
+} from "@/lib/users/nav-permissions";
 import { brand } from "@/lib/brand";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -83,7 +86,7 @@ export function AppSidebar({
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Account</span>
           <nav className={styles.nav}>
-            {user.userType === "ADMIN" ? (
+            {canAccessUsersMenu(user.userType, user.navPermissions) ? (
               <Link
                 href={usersNavItem.href}
                 className={`${styles.navLink} ${

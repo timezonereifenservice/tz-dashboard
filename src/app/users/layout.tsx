@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/shell/dashboard-shell";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canAccessProject, getAccessibleProjectIds } from "@/lib/projects/access";
+import { canAccessUsersMenu } from "@/lib/users/nav-permissions";
 import { PROJECTS, type ProjectId } from "@/lib/projects/config";
 
 export default async function UsersLayout({
@@ -11,7 +12,9 @@ export default async function UsersLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.userType !== "ADMIN") redirect("/settings");
+  if (!canAccessUsersMenu(user.userType, user.navPermissions)) {
+    redirect("/settings");
+  }
 
   const accessibleProjects = PROJECTS.filter((p) =>
     canAccessProject(user.userType, p.id as ProjectId),

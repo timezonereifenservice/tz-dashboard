@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminUser } from "@/lib/auth/require-admin";
+import {
+  requireAdminUser,
+  requireUsersMenuAccess,
+} from "@/lib/auth/require-admin";
 import type { UserType } from "@/lib/projects/access";
 import {
   createHubUser,
@@ -21,8 +24,8 @@ function isUserType(value: unknown): value is UserType {
 }
 
 export async function GET() {
-  const admin = await requireAdminUser();
-  if (!admin) {
+  const viewer = await requireUsersMenuAccess();
+  if (!viewer) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
   }
 
