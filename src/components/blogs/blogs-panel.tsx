@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  Database,
   ExternalLink,
   EyeOff,
   FileText,
@@ -14,11 +15,18 @@ import {
   History,
   Info,
   Lock,
+  Plus,
   RefreshCw,
   ShieldCheck,
   TrendingUp,
 } from "lucide-react";
-import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
+import { CreateBlogModal } from "@/components/blogs/create-blog-modal";
+import {
+  ConnectivityErrorBanner,
+  EmptyTableState,
+  ToastNotification,
+} from "@/components/system";
+import type { BlogStatus } from "@/lib/blogs/types";
 import type { UnifiedBlog } from "@/lib/adapters/types";
 import { getProjectMeta } from "@/lib/projects/meta";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -34,6 +42,7 @@ type BlogsPanelProps = {
   blogs: UnifiedBlog[];
   error?: string | null;
   syncedAt: string;
+  canCreate?: boolean;
 };
 
 type SortKey = "recent" | "views" | "alpha";
@@ -98,6 +107,7 @@ export function BlogsPanel({
   blogs,
   error = null,
   syncedAt,
+  canCreate = false,
 }: BlogsPanelProps) {
   const router = useRouter();
   const meta = getProjectMeta(project.id);
@@ -111,6 +121,13 @@ export function BlogsPanel({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [syncPending, setSyncPending] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [createPending, setCreatePending] = useState(false);
+  const [toast, setToast] = useState<{
+    variant: "success" | "error";
+    title: string;
+    meta?: string;
+  } | null>(null);
 
   const localeOptions = useMemo(() => {
     const values = new Set<string>();
@@ -214,6 +231,71 @@ export function BlogsPanel({
     window.setTimeout(() => setCopiedSlug(null), 1500);
   }
 
+  async function handleCreateBlog(input: {
+    title: string;
+    slug: string;
+    excerpt: string;
+    category: string;
+    bodyHtml: string;
+    status: BlogStatus;
+    seoTitle: string;
+    seoDescription: string;
+    coverFile: File;
+  }) {
+    setCreatePending(true);
+    try {
+      const imageForm = new FormData();
+      imageForm.append("file", input.coverFile);
+      imageForm.append("altText", input.title);
+
+      const imageResponse = await fetch(`/api/${project.id}/blog-images`, {
+        method: "POST",
+        body: imageForm,
+      });
+      const imagePayload = (await imageResponse.json()) as {
+        message?: string;
+        image?: { id: string; publicUrl: string };
+      };
+      if (!imageResponse.ok || !imagePayload.image) {
+        throw new Error(imagePayload.message ?? "Unable to upload cover image.");
+      }
+
+      const blogResponse = await fetch(`/api/${project.id}/blogs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: input.title,
+          slug: input.slug || undefined,
+          excerpt: input.excerpt,
+          category: input.category,
+          bodyHtml: input.bodyHtml,
+          status: input.status,
+          seoTitle: input.seoTitle,
+          seoDescription: input.seoDescription,
+          coverImageAssetId: imagePayload.image.id,
+          coverImageUrl: imagePayload.image.publicUrl,
+        }),
+      });
+      const blogPayload = (await blogResponse.json()) as {
+        message?: string;
+        blog?: { title: string; slug: string };
+      };
+      if (!blogResponse.ok) {
+        throw new Error(blogPayload.message ?? "Unable to create blog.");
+      }
+
+      setModalOpen(false);
+      setToast({
+        variant: "success",
+        title: "Blog created",
+        meta: `${blogPayload.blog?.title ?? input.title} saved to ${project.name}.`,
+      });
+      router.refresh();
+    } finally {
+      setCreatePending(false);
+    }
+  }
+
   const activeFilters = [
     statusFilter !== "ALL" ? `Status: ${statusFilter}` : null,
     localeFilter !== "ALL" ? `Language: ${localeFilter}` : null,
@@ -222,6 +304,14 @@ export function BlogsPanel({
 
   return (
     <div className={styles.page}>
+      {toast ? (
+        <ToastNotification
+          variant={toast.variant}
+          title={toast.title}
+          meta={toast.meta}
+        />
+      ) : null}
+
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.titleRow}>
@@ -231,15 +321,26 @@ export function BlogsPanel({
             </span>
           </div>
           <p className={styles.description}>
-            Read-only synchronized content feed from {meta.domain} WordPress headless CMS.
+            {canCreate
+              ? `Create and manage blog posts stored in the ${project.name} database.`
+              : `Read-only content feed from the ${project.name} database.`}
           </p>
         </div>
 
         <div className={styles.headerActions}>
-          <div className={styles.readOnlyChip}>
-            <Lock size={16} aria-hidden />
-            Read-only: editing managed in WordPress CMS
-          </div>
+          {canCreate ? (
+            <div className={styles.projectScopeChip}>
+              <Database size={16} aria-hidden />
+              <span>
+                Project database · <strong>{project.name}</strong>
+              </span>
+            </div>
+          ) : (
+            <div className={styles.readOnlyChip}>
+              <Lock size={16} aria-hidden />
+              Read-only access
+            </div>
+          )}
           <button
             type="button"
             className={styles.ghostButton}
@@ -247,8 +348,18 @@ export function BlogsPanel({
             onClick={syncFeed}
           >
             <RefreshCw size={18} aria-hidden />
-            {syncPending ? "Syncing…" : "Sync Feed"}
+            {syncPending ? "Refreshing…" : "Refresh"}
           </button>
+          {canCreate ? (
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => setModalOpen(true)}
+            >
+              <Plus size={16} aria-hidden />
+              Create blog
+            </button>
+          ) : null}
           <a
             className={styles.primaryButton}
             href={`https://${meta.domain}/blog`}
@@ -265,19 +376,19 @@ export function BlogsPanel({
         <Info className={styles.infoIcon} size={22} aria-hidden />
         <div className={styles.infoContent}>
           <p className={styles.infoText}>
-            Full editorial publishing, drafting, and asset uploads remain in each
-            property&apos;s native CMS. This console provides real-time performance
-            tracking and search visibility.
+            {canCreate
+              ? `New posts are written directly to the ${project.name} PostgreSQL database and appear on the live site when published.`
+              : "You can browse blog performance here. Contact an admin or editor to create new posts."}
           </p>
           <span className={styles.infoEndpoint}>
-            REST API Endpoint: https://{meta.domain}/wp-json/wp/v2/posts
+            Live site: https://{meta.domain}/blog
           </span>
         </div>
       </div>
 
       {error ? (
         <ConnectivityErrorBanner
-          title={`Could not connect to ${project.name} WordPress feed`}
+          title={`Could not load ${project.name} blogs`}
           message={error}
           cluster={meta.domain}
           onRetry={() => router.refresh()}
@@ -650,12 +761,14 @@ export function BlogsPanel({
         <div className={styles.footerMeta}>
           <div className={styles.footerItem}>
             <span className={styles.footerDot} aria-hidden />
-            <span className={styles.footerStrong}>CMS Sync: Connected</span>
-            <span>(WordPress REST API v2)</span>
+            <span className={styles.footerStrong}>
+              {canCreate ? "Database: Connected" : "Database: Read-only"}
+            </span>
+            <span>({project.name})</span>
           </div>
           <div className={styles.footerItem}>
             <History size={16} aria-hidden />
-            <span>Last synchronization: {formatRelativeTime(syncedAt)}</span>
+            <span>Last refresh: {formatRelativeTime(syncedAt)}</span>
           </div>
           <div className={styles.footerItem}>
             <Globe size={16} aria-hidden />
@@ -667,11 +780,25 @@ export function BlogsPanel({
         <div className={styles.footerNote}>
           <ShieldCheck size={16} aria-hidden />
           <span>
-            Full blog editing remains in each project&apos;s native dashboard. This view is
-            read-only.
+            {canCreate
+              ? "Posts created here are stored in this project's database."
+              : "Browse blog performance here. Editing requires editor or admin access."}
           </span>
         </div>
       </div>
+
+      {canCreate ? (
+        <CreateBlogModal
+          open={modalOpen}
+          pending={createPending}
+          projectId={project.id}
+          projectName={project.name}
+          onClose={() => {
+            if (!createPending) setModalOpen(false);
+          }}
+          onSubmit={handleCreateBlog}
+        />
+      ) : null}
     </div>
   );
 }

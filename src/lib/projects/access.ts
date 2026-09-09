@@ -23,3 +23,7 @@ export function getDefaultProjectId(userType: UserType): ProjectId {
   const ids = getAccessibleProjectIds(userType);
   return ids[0] ?? "tz-transport";
 }
+
+export function canManageProjectContent(userType: UserType): boolean {
+  return userType === "ADMIN" || userType === "EDITOR";
+}
