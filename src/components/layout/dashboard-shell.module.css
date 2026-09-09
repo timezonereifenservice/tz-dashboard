@@ -1,0 +1,50 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
+.shell {
+  min-height: 100vh;
+  background: var(--dash-bg);
+  color: var(--dash-on-surface);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.layout {
+  min-height: 100vh;
+}
+
+.contentWrap {
+  margin-left: 0;
+  min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .contentWrap {
+    margin-left: var(--dash-sidebar-width);
+  }
+}
+
+.main {
+  padding-top: var(--dash-header-height);
+  min-height: 100vh;
+  background: var(--dash-surface);
+}
+
+.pageContent {
+  max-width: var(--dash-content-max);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+@media (max-width: 640px) {
+  .pageContent {
+    padding: 1.25rem 1rem 2rem;
+  }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(11 28 48 / 40%);
+  z-index: 45;
+  border: 0;
+  cursor: pointer;
+}

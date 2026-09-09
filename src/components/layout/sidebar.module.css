@@ -1,0 +1,225 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: var(--dash-sidebar-width);
+  height: 100vh;
+  background: var(--dash-surface-lowest);
+  border-right: 1px solid rgb(195 198 209 / 40%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+}
+
+@media (min-width: 1024px) {
+  .sidebar {
+    transform: translateX(0);
+  }
+}
+
+.body {
+  padding: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.logo {
+  height: 2rem;
+  width: auto;
+  object-fit: contain;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+}
+
+.brandName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--dash-on-surface);
+}
+
+.brandTagline {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
+  color: var(--dash-on-surface-variant);
+}
+
+.projectSwitcher {
+  margin-top: 1rem;
+}
+
+.projectButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(195 198 209 / 60%);
+  background: var(--dash-surface-low);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.projectButton:hover {
+  background: var(--dash-surface-container);
+}
+
+.projectSelect {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.projectInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.projectDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background: var(--dash-project-dot);
+  flex-shrink: 0;
+}
+
+.projectName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--dash-on-surface);
+}
+
+.projectDomain {
+  font-size: 0.75rem;
+  color: var(--dash-on-surface-variant);
+}
+
+.section {
+  margin-top: 1.5rem;
+}
+
+.sectionLabel {
+  display: block;
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dash-outline);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--dash-on-surface-variant);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.navLink:hover {
+  background: var(--dash-surface-low);
+  color: var(--dash-on-surface);
+}
+
+.navLinkActive {
+  background: var(--dash-surface-low);
+  color: var(--dash-primary-container);
+  font-weight: 600;
+}
+
+.navLinkInner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navBadge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  background: var(--dash-surface-high);
+  color: var(--dash-primary-container);
+}
+
+.navHint {
+  font-size: 0.75rem;
+  color: var(--dash-outline);
+}
+
+.footer {
+  padding: 1rem;
+  border-top: 1px solid rgb(195 198 209 / 30%);
+}
+
+.roleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.roleLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dash-on-surface-variant);
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: var(--dash-primary-fixed);
+  color: var(--dash-on-primary-fixed);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.footerMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--dash-outline);
+}

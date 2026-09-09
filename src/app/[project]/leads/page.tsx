@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { LeadsTable } from "@/components/leads/leads-panel";
-import { DbErrorBanner } from "@/components/ui/db-error-banner";
 import { getAdapter } from "@/lib/adapters/registry";
 import type { UnifiedLead } from "@/lib/adapters/types";
 import { getErrorMessage } from "@/lib/adapters/errors";
@@ -23,9 +22,11 @@ export default async function LeadsPage({ params }: PageProps) {
   }
 
   return (
-    <>
-      {error ? <DbErrorBanner projectName={project.name} message={error} /> : null}
-      <LeadsTable projectSlug={slug} title="Leads" leads={leads} />
-    </>
+    <LeadsTable
+      project={project}
+      title="Leads"
+      leads={leads}
+      error={error}
+    />
   );
 }

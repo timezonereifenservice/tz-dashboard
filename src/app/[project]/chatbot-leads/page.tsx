@@ -21,6 +21,11 @@ export default async function ChatbotLeadsPage({ params }: PageProps) {
   }
 
   return (
-    <LeadsTable projectSlug={slug} title="Chatbot Leads" leads={leads} />
+    <LeadsTable
+      project={project}
+      title="Chatbot Leads"
+      description="Automated inquiries captured from the website chatbot widget."
+      leads={leads}
+    />
   );
 }

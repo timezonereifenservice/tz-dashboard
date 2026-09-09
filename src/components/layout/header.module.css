@@ -1,0 +1,247 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  height: var(--dash-header-height);
+  background: var(--dash-surface-lowest);
+  border-bottom: 1px solid rgb(195 198 209 / 40%);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (min-width: 1024px) {
+  .header {
+    left: var(--dash-sidebar-width);
+  }
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding: 0 1rem;
+  }
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--dash-on-surface-variant);
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  background: var(--dash-surface-low);
+  color: var(--dash-on-surface);
+}
+
+@media (min-width: 1024px) {
+  .menuButton {
+    display: none;
+  }
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  min-width: 0;
+}
+
+.breadcrumbMuted {
+  color: var(--dash-on-surface-variant);
+}
+
+.breadcrumbCurrent {
+  color: var(--dash-on-surface);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.status {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .status {
+    display: flex;
+  }
+}
+
+.statusDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--dash-secondary-container);
+  box-shadow: 0 0 0 2px rgb(130 249 196 / 20%);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.statusText {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--dash-secondary);
+}
+
+.divider {
+  width: 1px;
+  height: 1rem;
+  background: rgb(195 198 209 / 60%);
+}
+
+.profileWrap {
+  position: relative;
+}
+
+.profileButton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem 0 0.25rem 0.5rem;
+}
+
+.avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background: var(--dash-primary-container);
+  color: var(--dash-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.profileText {
+  display: none;
+  flex-direction: column;
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .profileText {
+    display: flex;
+  }
+}
+
+.profileNameRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profileName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--dash-on-surface);
+}
+
+.profileRole {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: var(--dash-primary-fixed);
+  color: var(--dash-on-primary-fixed);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.profileEmail {
+  font-size: 0.75rem;
+  color: var(--dash-on-surface-variant);
+  line-height: 1;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 14rem;
+  background: var(--dash-surface-lowest);
+  border: 1px solid rgb(195 198 209 / 60%);
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 24px rgb(11 28 48 / 10%);
+  padding: 0.5rem;
+  z-index: 60;
+}
+
+.menuMeta {
+  padding: 0.5rem 0.75rem;
+}
+
+.menuEmail {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.menuRole {
+  font-size: 0.75rem;
+  color: var(--dash-on-surface-variant);
+}
+
+.menuLink,
+.menuLogout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--dash-on-surface);
+  font-size: 0.875rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menuLink:hover,
+.menuLogout:hover {
+  background: var(--dash-surface-low);
+}

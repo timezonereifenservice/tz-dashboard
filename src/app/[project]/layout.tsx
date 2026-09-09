@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { DashboardShell } from "@/components/shell/dashboard-shell";
+import { getAdapter } from "@/lib/adapters/registry";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   canAccessProject,
@@ -28,11 +29,20 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
     canAccessProject(user.userType, p.id),
   );
 
+  let newLeadsCount = 0;
+  try {
+    const metrics = await getAdapter(project.id as ProjectId).getOverviewMetrics();
+    newLeadsCount = metrics.newLeads30d;
+  } catch {
+    newLeadsCount = 0;
+  }
+
   return (
     <DashboardShell
       user={user}
       projects={accessibleProjects}
       currentProject={project}
+      newLeadsCount={newLeadsCount}
     >
       {children}
     </DashboardShell>

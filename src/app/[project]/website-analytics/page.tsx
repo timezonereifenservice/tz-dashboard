@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { AnalyticsPanel } from "@/components/analytics/analytics-panel";
-import { DbErrorBanner } from "@/components/ui/db-error-banner";
 import { getAdapter } from "@/lib/adapters/registry";
 import { emptyAnalyticsSnapshot } from "@/lib/adapters/analytics-engine";
 import { getErrorMessage } from "@/lib/adapters/errors";
@@ -22,8 +21,7 @@ export default async function WebsiteAnalyticsPage({
   const project = getProjectBySlug(slug);
   if (!project) notFound();
 
-  const period: AnalyticsPeriod =
-    periodParam === "7d" ? "7d" : "30d";
+  const period: AnalyticsPeriod = periodParam === "7d" ? "7d" : "30d";
 
   let snapshot = emptyAnalyticsSnapshot(period);
   let error: string | null = null;
@@ -38,12 +36,11 @@ export default async function WebsiteAnalyticsPage({
 
   return (
     <Suspense>
-      {error ? <DbErrorBanner projectName={project.name} message={error} /> : null}
       <AnalyticsPanel
-        projectSlug={slug}
-        projectName={project.name}
+        project={project}
         initialPeriod={period}
         snapshot={snapshot}
+        error={error}
       />
     </Suspense>
   );

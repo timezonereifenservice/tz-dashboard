@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { LeadDetail } from "@/components/leads/leads-panel";
+import { LeadDetailPanel } from "@/components/leads/lead-detail-panel";
 import { getAdapter } from "@/lib/adapters/registry";
 import { getProjectBySlug, type ProjectId } from "@/lib/projects/config";
 
@@ -15,5 +15,5 @@ export default async function LeadDetailPage({ params }: PageProps) {
   const lead = await getAdapter(project.id as ProjectId).getLead(id);
   if (!lead) notFound();
 
-  return <LeadDetail projectSlug={slug} lead={lead} />;
+  return <LeadDetailPanel project={project} lead={lead} />;
 }
