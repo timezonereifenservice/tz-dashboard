@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  UserCog,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -67,6 +68,13 @@ export function getNavItems(projectId: ProjectId): NavItem[] {
   );
 }
 
+export const usersNavItem: NavItem = {
+  id: "users",
+  label: "Users",
+  href: "/users",
+  icon: UserCog,
+};
+
 export const settingsNavItem: NavItem = {
   id: "settings",
   label: "Settings",
@@ -86,5 +94,6 @@ export function getPageTitle(pathname: string): string {
   if (pathname.includes("/leads")) return "Leads";
   if (pathname.includes("/overview")) return "Overview";
   if (pathname.includes("/settings")) return "Settings";
+  if (pathname.includes("/users")) return "Users";
   return "Dashboard";
 }

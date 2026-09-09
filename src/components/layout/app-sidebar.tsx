@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getNavItems, settingsNavItem } from "@/lib/dashboard-nav";
+import { getNavItems, settingsNavItem, usersNavItem } from "@/lib/dashboard-nav";
 import { brand } from "@/lib/brand";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -81,6 +81,23 @@ export function AppSidebar({
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Account</span>
           <nav className={styles.nav}>
+            {user.userType === "ADMIN" ? (
+              <Link
+                href={usersNavItem.href}
+                className={`${styles.navLink} ${
+                  pathname === usersNavItem.href ||
+                  pathname.startsWith(`${usersNavItem.href}/`)
+                    ? styles.navLinkActive
+                    : ""
+                }`}
+                onClick={onNavigate}
+              >
+                <span className={styles.navLinkInner}>
+                  <usersNavItem.icon size={20} strokeWidth={1.75} aria-hidden />
+                  <span>{usersNavItem.label}</span>
+                </span>
+              </Link>
+            ) : null}
             <Link
               href={settingsNavItem.href}
               className={`${styles.navLink} ${

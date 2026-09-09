@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, LogOut, Menu, Settings } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, ChevronRight, LogOut, Menu, Settings, UserCog } from "lucide-react";
+import { usersNavItem } from "@/lib/dashboard-nav";
 import type { ProjectConfig } from "@/lib/projects/config";
 import type { DashboardUser } from "@/lib/auth/types";
 import { getInitials } from "@/lib/utils";
@@ -26,9 +27,16 @@ function displayName(email: string) {
 
 export function AppHeader({ currentProject, user, onMenuClick }: AppHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutPending, setLogoutPending] = useState(false);
+  const isGlobalPage = pathname.startsWith("/settings") || pathname.startsWith("/users");
+  const breadcrumbCurrent = isGlobalPage
+    ? pathname.startsWith("/users")
+      ? "Users"
+      : "Settings"
+    : currentProject.name;
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
       if (!menuRef.current?.contains(event.target as Node)) {
@@ -66,7 +74,7 @@ export function AppHeader({ currentProject, user, onMenuClick }: AppHeaderProps)
         <nav aria-label="Breadcrumb" className={styles.breadcrumb}>
           <span className={styles.breadcrumbMuted}>Console</span>
           <ChevronRight size={16} className={styles.breadcrumbMuted} aria-hidden />
-          <span className={styles.breadcrumbCurrent}>{currentProject.name}</span>
+          <span className={styles.breadcrumbCurrent}>{breadcrumbCurrent}</span>
         </nav>
       </div>
 
@@ -101,6 +109,17 @@ export function AppHeader({ currentProject, user, onMenuClick }: AppHeaderProps)
                 <div className={styles.menuEmail}>{user.email}</div>
                 <div className={styles.menuRole}>{user.userType}</div>
               </div>
+              {user.userType === "ADMIN" ? (
+                <Link
+                  href={usersNavItem.href}
+                  className={styles.menuLink}
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <UserCog size={18} aria-hidden />
+                  Users
+                </Link>
+              ) : null}
               <Link
                 href="/settings"
                 className={styles.menuLink}
