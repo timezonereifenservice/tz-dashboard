@@ -84,15 +84,11 @@ export default async function OverviewPage({ params }: PageProps) {
         <DashboardCard title="Quick Links">
           <Box display="flex" flexWrap="wrap" gap={1}>
             {quickLinks.map((link) => (
-              <Button
-                key={link.href}
-                component={Link}
-                href={link.href}
-                variant="outlined"
-                color="primary"
-              >
-                {link.label}
-              </Button>
+              <Link key={link.href} href={link.href} style={{ textDecoration: "none" }}>
+                <Button variant="outlined" color="primary">
+                  {link.label}
+                </Button>
+              </Link>
             ))}
           </Box>
         </DashboardCard>
