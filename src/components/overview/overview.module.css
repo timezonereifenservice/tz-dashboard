@@ -104,7 +104,7 @@
   border-radius: 9999px;
   background: var(--dash-surface-low);
   font-size: 0.8125rem;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
 }
 
 @media (min-width: 640px) {
@@ -137,7 +137,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
   transition: background-color 0.15s ease;
 }
 
@@ -163,7 +163,7 @@
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
 }
 
 .banner {
@@ -269,7 +269,7 @@
   background: var(--dash-surface-lowest);
   border-radius: 0.75rem;
   padding: 1rem;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -335,7 +335,7 @@
   background: var(--dash-surface-lowest);
   border-radius: 0.75rem;
   padding: 1rem;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -417,7 +417,7 @@
   background: var(--dash-surface-lowest);
   border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
 }
 
 .panelHeader {

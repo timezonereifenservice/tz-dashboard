@@ -11,7 +11,11 @@ import {
   isValidBlogSlug,
   slugifyBlogTitle,
 } from "@/lib/dashboard-blogs/helpers";
-import type { BlogImageAsset, BlogStatus } from "@/lib/dashboard-blogs/types";
+import type {
+  BlogImageAsset,
+  BlogStatus,
+  DashboardBlog,
+} from "@/lib/dashboard-blogs/types";
 
 const BlogBodyEditor = dynamic(
   () => import("@/components/blogs/shared/blog-body-editor"),
@@ -30,10 +34,12 @@ const inputClassName =
 
 type BlogEditorPanelProps = {
   backHref: string;
+  blogId?: string;
 };
 
-export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
+export function BlogEditorPanel({ backHref, blogId }: BlogEditorPanelProps) {
   const router = useRouter();
+  const isEditMode = Boolean(blogId);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingBlog, setIsSubmittingBlog] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -70,12 +76,41 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
         if (!imagesRes.ok || !imagesData.ok) {
           throw new Error(imagesData.error || "Unable to load images.");
         }
-        if (!cancelled) setImages(imagesData.images ?? []);
+        if (cancelled) return;
+        setImages(imagesData.images ?? []);
+
+        if (blogId) {
+          const blogRes = await fetch(`/api/dashboard/blogs/${blogId}`);
+          const blogData = (await blogRes.json()) as {
+            ok?: boolean;
+            error?: string;
+            blog?: DashboardBlog;
+          };
+          if (!blogRes.ok || !blogData.ok || !blogData.blog) {
+            throw new Error(blogData.error || "Blog not found.");
+          }
+          if (cancelled) return;
+
+          const blog = blogData.blog;
+          setBlogTitle(blog.title);
+          setBlogSlug(blog.slug);
+          setBlogExcerpt(blog.excerpt);
+          setBlogStatus(blog.status);
+          setSeoTitle(blog.seoTitle);
+          setSeoDescription(blog.seoDescription);
+          setBlogCategory(blog.category);
+          setBlogDate(blog.dateLabel);
+          setBodyHtml(blog.bodyHtml);
+          setSelectedImageUrl(blog.coverImageUrl || null);
+          setSelectedImageId(blog.coverImageAssetId ?? null);
+          setSlugTouched(true);
+        }
       } catch (error) {
         if (!cancelled) {
           toast.error(
             error instanceof Error ? error.message : "Unable to load editor.",
           );
+          if (blogId) router.replace(backHref);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -86,7 +121,7 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [blogId, backHref, router]);
 
   async function handleUploadImage(file: File) {
     if (isUploadingImage) return;
@@ -135,26 +170,32 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
 
     setIsSubmittingBlog(true);
     try {
-      const response = await fetch("/api/dashboard/blogs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: blogTitle,
-          slug: blogSlug,
-          excerpt: blogExcerpt,
-          status: blogStatus,
-          seoTitle,
-          seoDescription,
-          category: blogCategory,
-          dateLabel: blogDate,
-          bodyHtml,
-          coverImageUrl: selectedImageUrl,
-          coverImageAssetId: selectedImageId,
-        }),
-      });
+      const payload = {
+        title: blogTitle,
+        slug: blogSlug,
+        excerpt: blogExcerpt,
+        status: blogStatus,
+        seoTitle,
+        seoDescription,
+        category: blogCategory,
+        dateLabel: blogDate,
+        bodyHtml,
+        coverImageUrl: selectedImageUrl,
+        coverImageAssetId: selectedImageId,
+      };
+
+      const response = await fetch(
+        isEditMode && blogId ? `/api/dashboard/blogs/${blogId}` : "/api/dashboard/blogs",
+        {
+          method: isEditMode ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
       const data = (await response.json()) as {
         ok?: boolean;
         error?: string;
+        blog?: DashboardBlog;
       };
 
       if (!response.ok || !data.ok) {
@@ -162,7 +203,7 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
         return;
       }
 
-      toast.success("Blog created.");
+      toast.success(isEditMode ? "Blog updated." : "Blog created.");
       router.push(backHref);
       router.refresh();
     } catch {
@@ -195,11 +236,13 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
           Back
         </button>
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-dark">
-          Create New Blog
+          {isEditMode ? "Edit Blog" : "Create New Blog"}
         </p>
         <h1 className="mt-2 text-2xl font-bold text-logo-bg md:text-3xl">Blog Editor</h1>
         <p className="mt-3 text-sm text-foreground/55 md:text-base">
-          Create blogs in the same structure/style currently shown on frontend blog pages.
+          {isEditMode
+            ? "Update this blog post. All fields are prefilled with the current content."
+            : "Create blogs in the same structure/style currently shown on frontend blog pages."}
         </p>
       </div>
 
@@ -296,7 +339,11 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
           <div className="mt-4 rounded-xl border border-black/10 p-4">
             <p className="text-sm font-semibold text-logo-bg">Blog Body (WYSIWYG)</p>
             <div className="mt-3">
-              <BlogBodyEditor editorKey="create" value={bodyHtml} onChange={setBodyHtml} />
+              <BlogBodyEditor
+                editorKey={blogId ?? "create"}
+                value={bodyHtml}
+                onChange={setBodyHtml}
+              />
             </div>
           </div>
         </div>
@@ -383,7 +430,13 @@ export function BlogEditorPanel({ backHref }: BlogEditorPanelProps) {
             ) : (
               <Save size={16} />
             )}
-            {isSubmittingBlog ? "Saving Blog..." : "Save Blog"}
+            {isSubmittingBlog
+              ? isEditMode
+                ? "Updating Blog..."
+                : "Saving Blog..."
+              : isEditMode
+                ? "Update Blog"
+                : "Save Blog"}
           </button>
         </div>
       </div>

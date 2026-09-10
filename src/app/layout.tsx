@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: brand.name,
     template: `%s | ${brand.name}`,
   },
-  description: brand.tagline,
+  description: "Unified dashboard for TZ Transport, Take & Bring, and TZ Reifenservice.",
   applicationName: brand.name,
   robots: { index: false, follow: false },
   icons: {

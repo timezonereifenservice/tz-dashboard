@@ -11,6 +11,7 @@ import {
   Lock,
   Shield,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
 import { UserAvatar } from "@/components/users/user-avatar";
 import type { DashboardUser } from "@/lib/auth/types";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -241,21 +242,19 @@ export function SettingsPanel({
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <div>
-          <h1 className={styles.title}>Settings</h1>
-          <p className={styles.description}>
-            Manage your ConsoleHub account security and credentials across unified
-            properties.
-          </p>
-        </div>
-        <div className={styles.scopeChip}>
-          <Globe size={16} aria-hidden />
-          <span>
-            Active Scope: <strong>{roleLabel(user.userType)}</strong>
-          </span>
-        </div>
-      </div>
+      <DashboardPageHeader
+        eyebrow="Account"
+        title="Settings"
+        description="Manage your TZ Dashboard account security and credentials."
+        actions={
+          <div className={styles.scopeChip}>
+            <Globe size={16} aria-hidden />
+            <span>
+              Active Scope: <strong>{roleLabel(user.userType)}</strong>
+            </span>
+          </div>
+        }
+      />
 
       <div className={styles.grid}>
         <div className={styles.mainColumn}>

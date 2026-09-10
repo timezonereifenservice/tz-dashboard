@@ -11,11 +11,13 @@ import {
   ExternalLink,
   EyeOff,
   FileText,
+  Pencil,
   Globe,
   Plus,
   RefreshCw,
   TrendingUp,
 } from "lucide-react";
+import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
 import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
 import type { UnifiedBlog } from "@/lib/adapters/types";
 import { getProjectMeta } from "@/lib/projects/meta";
@@ -220,39 +222,37 @@ export function BlogsPanel({
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <div>
-          <div className={styles.titleRow}>
-            <h1 className={styles.title}>Blogs & Articles</h1>
-          </div>
-          <p className={styles.description}>
-            {canCreate
-              ? `Create and manage blog posts stored in the ${project.name} database.`
-              : `Read-only content feed from the ${project.name} database.`}
-          </p>
-        </div>
-
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.ghostButton}
-            disabled={syncPending}
-            onClick={syncFeed}
-          >
-            <RefreshCw size={18} aria-hidden />
-            {syncPending ? "Refreshing…" : "Refresh"}
-          </button>
-          {canCreate ? (
-            <Link
-              href={`/${project.id}/blogs/create-new`}
-              className={styles.primaryButton}
+      <DashboardPageHeader
+        eyebrow="Content"
+        title="Blogs & Articles"
+        description={
+          canCreate
+            ? `Create and manage blog posts stored in the ${project.name} database.`
+            : `Read-only content feed from the ${project.name} database.`
+        }
+        actions={
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.ghostButton}
+              disabled={syncPending}
+              onClick={syncFeed}
             >
-              <Plus size={16} aria-hidden />
-              Create blog
-            </Link>
-          ) : null}
-        </div>
-      </div>
+              <RefreshCw size={18} aria-hidden />
+              {syncPending ? "Refreshing…" : "Refresh"}
+            </button>
+            {canCreate ? (
+              <Link
+                href={`/${project.id}/blogs/create-new`}
+                className={styles.primaryButton}
+              >
+                <Plus size={16} aria-hidden />
+                Create blog
+              </Link>
+            ) : null}
+          </div>
+        }
+      />
 
       {error ? (
         <ConnectivityErrorBanner
@@ -534,21 +534,32 @@ export function BlogsPanel({
                         )}
                       </td>
                       <td className={styles.actionCell}>
-                        {published ? (
-                          <a
-                            className={styles.viewLink}
-                            href={blogUrl(meta.domain, blog.slug)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="View published article"
-                          >
-                            <ExternalLink size={16} aria-hidden />
-                          </a>
-                        ) : (
-                          <span className={styles.viewDisabled} title="Draft preview unavailable">
-                            <EyeOff size={16} aria-hidden />
-                          </span>
-                        )}
+                        <div className={styles.actionButtons}>
+                          {canCreate ? (
+                            <Link
+                              className={styles.editLink}
+                              href={`/${project.id}/blogs/edit/${blog.id}`}
+                              title="Edit article"
+                            >
+                              <Pencil size={16} aria-hidden />
+                            </Link>
+                          ) : null}
+                          {published ? (
+                            <a
+                              className={styles.viewLink}
+                              href={blogUrl(meta.domain, blog.slug)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="View published article"
+                            >
+                              <ExternalLink size={16} aria-hidden />
+                            </a>
+                          ) : (
+                            <span className={styles.viewDisabled} title="Draft preview unavailable">
+                              <EyeOff size={16} aria-hidden />
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

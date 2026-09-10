@@ -4,7 +4,7 @@ export type UserType = "ADMIN" | "EDITOR" | "VIEWER";
 
 const ACCESS_MAP: Record<UserType, ProjectId[]> = {
   ADMIN: ["take-bring", "tz-transport", "tz-reifenservice"],
-  EDITOR: ["take-bring", "tz-transport"],
+  EDITOR: ["take-bring", "tz-transport", "tz-reifenservice"],
   VIEWER: ["tz-transport"],
 };
 

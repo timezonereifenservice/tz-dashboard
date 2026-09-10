@@ -200,3 +200,149 @@ export async function createTakeBringBlog(
   }
   return createTakeBringBlogPg(input);
 }
+
+async function getTakeBringBlogByIdSupabase(id: string): Promise<DashboardBlog | null> {
+  const supabase = getTakeBringSupabase();
+  if (!supabase) throw new Error("Take & Bring database is not configured.");
+
+  const { data, error } = await supabase
+    .from("blogs")
+    .select(BLOG_RETURN)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return mapBlogRow(data as BlogRow);
+}
+
+async function getTakeBringBlogByIdPg(id: string): Promise<DashboardBlog | null> {
+  const { rows } = await projectQuery<BlogRow>(
+    "take-bring",
+    `SELECT ${BLOG_RETURN} FROM blogs WHERE id = $1 LIMIT 1`,
+    [id],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return mapBlogRow(row);
+}
+
+export async function getTakeBringBlogById(id: string): Promise<DashboardBlog | null> {
+  if (isTakeBringSupabaseConfigured()) {
+    return getTakeBringBlogByIdSupabase(id);
+  }
+  return getTakeBringBlogByIdPg(id);
+}
+
+async function updateTakeBringBlogSupabase(
+  id: string,
+  input: CreateBlogInput,
+  existing: DashboardBlog,
+): Promise<DashboardBlog> {
+  const supabase = getTakeBringSupabase();
+  if (!supabase) throw new Error("Take & Bring database is not configured.");
+
+  const baseSlug = normalizeBlogSlug(input.title, input.slug);
+  const slug = await ensureUniqueBlogSlug("take-bring", baseSlug, id);
+  const status = input.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+  const publishedAt =
+    status === "PUBLISHED"
+      ? existing.publishedAt ?? new Date().toISOString()
+      : null;
+
+  const { data, error } = await supabase
+    .from("blogs")
+    .update({
+      title: input.title.trim(),
+      slug,
+      excerpt: input.excerpt?.trim() || "",
+      status,
+      seo_title: input.seoTitle?.trim() || "",
+      seo_description: input.seoDescription?.trim() || "",
+      category: input.category?.trim() || "General",
+      date_label: input.dateLabel?.trim() || formatBlogDateLabel(),
+      body_html: input.bodyHtml,
+      cover_image_url: input.coverImageUrl.trim(),
+      cover_image_asset_id: input.coverImageAssetId,
+      published_at: publishedAt,
+    })
+    .eq("id", id)
+    .select(BLOG_RETURN)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return mapBlogRow(data as BlogRow);
+}
+
+async function updateTakeBringBlogPg(
+  id: string,
+  input: CreateBlogInput,
+  existing: DashboardBlog,
+): Promise<DashboardBlog> {
+  const baseSlug = normalizeBlogSlug(input.title, input.slug);
+  const slug = await ensureUniqueBlogSlug("take-bring", baseSlug, id);
+  const status = input.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT";
+  const publishedAt =
+    status === "PUBLISHED"
+      ? existing.publishedAt
+        ? new Date(existing.publishedAt)
+        : new Date()
+      : null;
+
+  const { rows } = await projectQuery<BlogRow>(
+    "take-bring",
+    `UPDATE blogs
+     SET title = $1,
+         slug = $2,
+         excerpt = $3,
+         status = $4,
+         seo_title = $5,
+         seo_description = $6,
+         category = $7,
+         date_label = $8,
+         body_html = $9,
+         cover_image_url = $10,
+         cover_image_asset_id = $11,
+         published_at = $12,
+         updated_at = NOW()
+     WHERE id = $13
+     RETURNING ${BLOG_RETURN}`,
+    [
+      input.title.trim(),
+      slug,
+      input.excerpt?.trim() || "",
+      status,
+      input.seoTitle?.trim() || "",
+      input.seoDescription?.trim() || "",
+      input.category?.trim() || "General",
+      input.dateLabel?.trim() || formatBlogDateLabel(),
+      input.bodyHtml,
+      input.coverImageUrl.trim(),
+      input.coverImageAssetId,
+      publishedAt,
+      id,
+    ],
+  );
+
+  const row = rows[0];
+  if (!row) throw new Error("Blog not found.");
+  return mapBlogRow(row);
+}
+
+export async function updateTakeBringBlog(
+  id: string,
+  input: CreateBlogInput,
+): Promise<DashboardBlog> {
+  const existing = await getTakeBringBlogById(id);
+  if (!existing) throw new Error("Blog not found.");
+  if (!input.title.trim()) throw new Error("Blog title is required.");
+  if (!input.bodyHtml.trim()) throw new Error("Blog body is required.");
+  if (!input.coverImageAssetId?.trim() || !input.coverImageUrl.trim()) {
+    throw new Error("Cover image is required.");
+  }
+
+  if (isTakeBringSupabaseConfigured()) {
+    return updateTakeBringBlogSupabase(id, input, existing);
+  }
+  return updateTakeBringBlogPg(id, input, existing);
+}

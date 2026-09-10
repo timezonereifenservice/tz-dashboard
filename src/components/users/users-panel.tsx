@@ -2,17 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Shield,
+  Trash2,
   UserCheck,
   Users,
   UserX,
 } from "lucide-react";
-import { CreateUserModal } from "@/components/users/create-user-modal";
+import { ConfirmUserActionModal } from "@/components/users/confirm-user-action-modal";
 import { UserAvatar } from "@/components/users/user-avatar";
+import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
 import {
   ConnectivityErrorBanner,
   EmptyTableState,
@@ -64,13 +68,16 @@ export function UsersPanel({
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">(
     "ALL",
   );
-  const [modalOpen, setModalOpen] = useState(false);
-  const [pending, setPending] = useState(false);
   const [refreshPending, setRefreshPending] = useState(false);
   const [toast, setToast] = useState<{
     variant: "success" | "error";
     title: string;
     meta?: string;
+  } | null>(null);
+  const [actionPendingId, setActionPendingId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "delete" | "toggle-active";
+    user: HubUser;
   } | null>(null);
 
   const filtered = useMemo(() => {
@@ -117,33 +124,58 @@ export function UsersPanel({
     setStatusFilter("ALL");
   }
 
-  async function handleCreateUser(input: {
-    email: string;
-    password: string;
-    userType: UserType;
-    isActive: boolean;
-  }) {
-    setPending(true);
+  async function handleConfirmAction() {
+    if (!confirmAction) return;
+
+    const { type, user } = confirmAction;
+    setActionPendingId(user.id);
+    setToast(null);
+
     try {
-      const response = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-      const payload = (await response.json()) as { message?: string };
-      if (!response.ok) {
-        throw new Error(payload.message ?? "Unable to create user.");
+      if (type === "delete") {
+        const response = await fetch(`/api/users/${user.id}`, {
+          method: "DELETE",
+        });
+        const payload = (await response.json()) as { message?: string };
+        if (!response.ok) {
+          throw new Error(payload.message ?? "Unable to delete user.");
+        }
+        setToast({
+          variant: "success",
+          title: "User deleted",
+          meta: `${user.email} was removed from ConsoleHub.`,
+        });
+      } else {
+        const response = await fetch(`/api/users/${user.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: !user.isActive }),
+        });
+        const payload = (await response.json()) as { message?: string };
+        if (!response.ok) {
+          throw new Error(payload.message ?? "Unable to update user.");
+        }
+        setToast({
+          variant: "success",
+          title: user.isActive ? "User deactivated" : "User activated",
+          meta: user.isActive
+            ? `${user.email} can no longer sign in.`
+            : `${user.email} can sign in again.`,
+        });
       }
 
-      setModalOpen(false);
-      setToast({
-        variant: "success",
-        title: "User created",
-        meta: `${input.email} can now sign in to ConsoleHub.`,
-      });
+      setConfirmAction(null);
       router.refresh();
+    } catch (error) {
+      setToast({
+        variant: "error",
+        title: type === "delete" ? "Delete failed" : "Update failed",
+        meta:
+          error instanceof Error ? error.message : "Unable to complete action.",
+      });
+      setConfirmAction(null);
     } finally {
-      setPending(false);
+      setActionPendingId(null);
     }
   }
 
@@ -157,38 +189,30 @@ export function UsersPanel({
         />
       ) : null}
 
-      <div className={styles.pageHeader}>
-        <div>
-          <div className={styles.titleRow}>
-            <h1 className={styles.title}>Users</h1>
-          </div>
-          <p className={styles.description}>
-            Manage dashboard accounts, roles, and sidebar access for your team.
-          </p>
-        </div>
-
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.ghostButton}
-            disabled={refreshPending}
-            onClick={handleRefresh}
-          >
-            <RefreshCw size={18} aria-hidden />
-            {refreshPending ? "Refreshing…" : "Refresh"}
-          </button>
-          {canManageUsers ? (
+      <DashboardPageHeader
+        eyebrow="User Management"
+        title="Users"
+        description="Manage dashboard accounts, roles, and sidebar access for your team."
+        actions={
+          <div className={styles.headerActions}>
             <button
               type="button"
-              className={styles.primaryButton}
-              onClick={() => setModalOpen(true)}
+              className={styles.ghostButton}
+              disabled={refreshPending}
+              onClick={handleRefresh}
             >
-              <Plus size={16} aria-hidden />
-              Create user
+              <RefreshCw size={18} aria-hidden />
+              {refreshPending ? "Refreshing…" : "Refresh"}
             </button>
-          ) : null}
-        </div>
-      </div>
+            {canManageUsers ? (
+              <Link href="/users/create" className={styles.primaryButton}>
+                <Plus size={16} aria-hidden />
+                Create user
+              </Link>
+            ) : null}
+          </div>
+        }
+      />
 
       {error ? (
         <ConnectivityErrorBanner
@@ -309,12 +333,13 @@ export function UsersPanel({
                 <th>Status</th>
                 <th>Last login</th>
                 <th>Created</th>
+                {canManageUsers ? <th className={styles.actionCell}>Actions</th> : null}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={canManageUsers ? 6 : 5}>
                     <EmptyTableState
                       variant="embedded"
                       title={users.length === 0 ? "No users yet" : "No matches"}
@@ -397,6 +422,65 @@ export function UsersPanel({
                     <td className={styles.mutedCell}>
                       {formatBlogDate(user.createdAt)}
                     </td>
+                    {canManageUsers ? (
+                      <td className={styles.actionCell}>
+                        <div
+                          className={styles.actionButtons}
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <Link
+                            className={styles.editLink}
+                            href={`/users/${user.id}`}
+                            title="Edit user"
+                            aria-label={`Edit ${user.email}`}
+                          >
+                            <Pencil size={16} aria-hidden />
+                          </Link>
+                          {user.id !== currentUserId ? (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.toggleLink}
+                                title={
+                                  user.isActive ? "Deactivate user" : "Activate user"
+                                }
+                                aria-label={
+                                  user.isActive
+                                    ? `Deactivate ${user.email}`
+                                    : `Activate ${user.email}`
+                                }
+                                disabled={actionPendingId === user.id}
+                                onClick={() =>
+                                  setConfirmAction({
+                                    type: "toggle-active",
+                                    user,
+                                  })
+                                }
+                              >
+                                {user.isActive ? (
+                                  <UserX size={16} aria-hidden />
+                                ) : (
+                                  <UserCheck size={16} aria-hidden />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.deleteLink}
+                                title="Delete user"
+                                aria-label={`Delete ${user.email}`}
+                                disabled={actionPendingId === user.id}
+                                onClick={() =>
+                                  setConfirmAction({ type: "delete", user })
+                                }
+                              >
+                                <Trash2 size={16} aria-hidden />
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 ))
               )}
@@ -405,14 +489,38 @@ export function UsersPanel({
         </div>
       </div>
 
-      <CreateUserModal
-        open={modalOpen}
-        pending={pending}
-        onClose={() => {
-          if (!pending) setModalOpen(false);
-        }}
-        onSubmit={handleCreateUser}
-      />
+      {confirmAction ? (
+        <ConfirmUserActionModal
+          open
+          pending={actionPendingId === confirmAction.user.id}
+          title={
+            confirmAction.type === "delete"
+              ? "Delete user"
+              : confirmAction.user.isActive
+                ? "Deactivate user"
+                : "Activate user"
+          }
+          description={
+            confirmAction.type === "delete"
+              ? `Permanently remove ${confirmAction.user.email}? This cannot be undone.`
+              : confirmAction.user.isActive
+                ? `${confirmAction.user.email} will no longer be able to sign in.`
+                : `${confirmAction.user.email} will be able to sign in again.`
+          }
+          confirmLabel={
+            confirmAction.type === "delete"
+              ? "Delete user"
+              : confirmAction.user.isActive
+                ? "Deactivate"
+                : "Activate"
+          }
+          danger={confirmAction.type === "delete"}
+          onClose={() => {
+            if (!actionPendingId) setConfirmAction(null);
+          }}
+          onConfirm={handleConfirmAction}
+        />
+      ) : null}
     </div>
   );
 }

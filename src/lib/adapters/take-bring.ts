@@ -238,7 +238,7 @@ export const takeBringAdapter: ProjectAdapter = {
     if (events.length === 0 && leads.length === 0) {
       return emptyAnalyticsSnapshot(period);
     }
-    return buildAnalyticsSnapshot(period, events, leads);
+    return buildAnalyticsSnapshot("take-bring", period, events, leads);
   },
 
   listLeads: fetchLeads,

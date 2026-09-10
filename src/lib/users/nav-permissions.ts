@@ -102,22 +102,20 @@ export function getEditableProjectsForRole(userType: UserType): ProjectId[] {
 }
 
 export function sanitizeNavPermissionsForRole(
-  userType: UserType,
+  _userType: UserType,
   navPermissions: UserNavPermissions,
 ): UserNavPermissions {
-  const allowedProjects = new Set(getEditableProjectsForRole(userType));
   const sanitized: UserNavPermissions = {};
 
   if (typeof navPermissions.global?.users === "boolean") {
     sanitized.global = { users: navPermissions.global.users };
   }
 
-  for (const projectId of allowedProjects) {
-    const effective = getEffectiveProjectNavPermissions(
-      projectId,
+  for (const project of PROJECTS) {
+    sanitized[project.id] = getEffectiveProjectNavPermissions(
+      project.id,
       navPermissions,
     );
-    sanitized[projectId] = effective;
   }
 
   return sanitized;

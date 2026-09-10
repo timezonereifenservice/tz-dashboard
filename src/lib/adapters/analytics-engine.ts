@@ -1,8 +1,19 @@
+import {
+  getAnalyticsConstants,
+  normalizeAnalyticsPath,
+  pathMatchesService,
+  serviceIdForPath,
+  servicePathLabel,
+} from "@/lib/analytics/constants";
+import type { ServiceAnalyticsDef } from "@/lib/analytics/constants";
+import type { ProjectId } from "@/lib/projects/config";
 import type {
   AnalyticsDailyPoint,
   AnalyticsPeriod,
   AnalyticsSnapshot,
+  BlogContentRow,
   BreakdownRow,
+  LocaleTraffic,
   UnifiedLead,
 } from "@/lib/adapters/types";
 
@@ -94,13 +105,127 @@ function buildBreakdown(
 }
 
 function normalizePath(path: string) {
-  return path.replace(/^\/(en|de|ro)(?=\/|$)/, "") || "/";
+  return normalizeAnalyticsPath(path);
+}
+
+function countServiceLeads(
+  leads: UnifiedLead[],
+  service: ServiceAnalyticsDef,
+): number {
+  return leads.filter((lead) => {
+    if (
+      service.formKeys.some(
+        (key) => key && (lead.formKey === key || lead.source === key),
+      )
+    ) {
+      return true;
+    }
+    if (lead.sourcePage && pathMatchesService(lead.sourcePage, service)) {
+      return true;
+    }
+    return false;
+  }).length;
+}
+
+function localeFromPath(path: string): string {
+  if (path.startsWith("/en/") || path === "/en") return "en";
+  if (path.startsWith("/ro/") || path === "/ro") return "ro";
+  return "de";
+}
+
+function findPageLabel(
+  path: string,
+  pageLabels: Record<string, string>,
+): string | null {
+  const keys = Object.keys(pageLabels).sort((a, b) => b.length - a.length);
+  for (const key of keys) {
+    if (path.startsWith(`${key}/`) || path === key) {
+      return pageLabels[key] ?? null;
+    }
+  }
+  return null;
 }
 
 function humanizeKey(key: string) {
   return key
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buildLocales(
+  events: RawAnalyticsEvent[],
+  leads: UnifiedLead[],
+  localeLabels: Record<string, string>,
+): LocaleTraffic[] {
+  const visitorMap = new Map<string, Set<string>>();
+  for (const event of events) {
+    if (event.eventType !== "page_view") continue;
+    const locale =
+      event.locale?.trim() ||
+      localeFromPath(event.path) ||
+      "de";
+    const id = event.visitorId || event.sessionId || event.id;
+    const set = visitorMap.get(locale) ?? new Set<string>();
+    set.add(id);
+    visitorMap.set(locale, set);
+  }
+
+  const leadMap = new Map<string, number>();
+  for (const lead of leads) {
+    const locale = localeFromPath(lead.sourcePage || "") || "de";
+    leadMap.set(locale, (leadMap.get(locale) ?? 0) + 1);
+  }
+
+  const locales = [...new Set([...visitorMap.keys(), ...leadMap.keys()])];
+  const totalVisitors = locales.reduce(
+    (sum, locale) => sum + (visitorMap.get(locale)?.size ?? 0),
+    0,
+  );
+
+  return locales
+    .map((locale) => {
+      const visitors = visitorMap.get(locale)?.size ?? 0;
+      return {
+        locale,
+        label: localeLabels[locale] ?? humanizeKey(locale),
+        visitors,
+        leads: leadMap.get(locale) ?? 0,
+        sharePct: totalVisitors
+          ? Math.round((visitors / totalVisitors) * 100)
+          : 0,
+      };
+    })
+    .sort((a, b) => b.visitors - a.visitors);
+}
+
+function buildBlogPerformance(events: RawAnalyticsEvent[]): BlogContentRow[] {
+  const blogPattern = /^\/(?:en|de|ro)?\/?blogs?\//i;
+  const slugMap = new Map<string, { views: number; ctaClicks: number }>();
+
+  for (const event of events) {
+    if (!blogPattern.test(event.path)) continue;
+    const match = event.path.match(/\/(?:en|de|ro)?\/?blogs?\/([^/?#]+)/i);
+    const slug = match?.[1];
+    if (!slug) continue;
+
+    const entry = slugMap.get(slug) ?? { views: 0, ctaClicks: 0 };
+    if (event.eventType === "page_view") entry.views += 1;
+    if (event.eventType === "cta_click") entry.ctaClicks += 1;
+    slugMap.set(slug, entry);
+  }
+
+  return [...slugMap.entries()]
+    .map(([slug, stats]) => ({
+      slug,
+      title: slug
+        .split("-")
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" "),
+      views: stats.views,
+      ctaClicks: stats.ctaClicks,
+    }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 8);
 }
 
 export function buildDailySeries(
@@ -143,6 +268,7 @@ export type AnalyticsView = {
 };
 
 export function buildAnalyticsView(
+  projectId: ProjectId,
   period: AnalyticsPeriod,
   events: RawAnalyticsEvent[],
   leads: UnifiedLead[],
@@ -170,7 +296,7 @@ export function buildAnalyticsView(
   ).length;
 
   return {
-    snapshot: buildAnalyticsSnapshot(period, events, leads),
+    snapshot: buildAnalyticsSnapshot(projectId, period, events, leads),
     dailySeries: buildDailySeries(period, events, leads),
     previousVisitors: countUniqueVisitors(previousEvents),
     previousLeads: previousLeads.length,
@@ -183,10 +309,12 @@ export function buildAnalyticsView(
 }
 
 export function buildAnalyticsSnapshot(
+  projectId: ProjectId,
   period: AnalyticsPeriod,
   events: RawAnalyticsEvent[],
   leads: UnifiedLead[],
 ): AnalyticsSnapshot {
+  const constants = getAnalyticsConstants(projectId);
   const days = periodDays(period);
   const currentSince = sinceIso(days);
   const previousSince = sinceIso(days * 2);
@@ -214,37 +342,95 @@ export function buildAnalyticsSnapshot(
     : 0;
 
   const pageViews = currentEvents.filter((e) => e.eventType === "page_view");
-  const pathViews = new Map<string, number>();
+  const pageStats = new Map<
+    string,
+    { views: number; sessions: Set<string> }
+  >();
+
   for (const evt of pageViews) {
     const path = normalizePath(evt.path);
-    pathViews.set(path, (pathViews.get(path) ?? 0) + 1);
+    const entry = pageStats.get(path) ?? { views: 0, sessions: new Set() };
+    entry.views += 1;
+    const sessionId = evt.sessionId || evt.visitorId || evt.id;
+    entry.sessions.add(sessionId);
+    pageStats.set(path, entry);
   }
 
-  const topPages = [...pathViews.entries()]
-    .map(([path, views]) => ({
+  const serviceViewCounts = new Map<string, number>();
+  for (const [path, stats] of pageStats.entries()) {
+    const serviceId = serviceIdForPath(path, constants.serviceAnalytics);
+    if (serviceId) {
+      serviceViewCounts.set(
+        serviceId,
+        (serviceViewCounts.get(serviceId) ?? 0) + stats.views,
+      );
+    }
+  }
+
+  const formLeadMap = new Map<string, number>();
+  for (const lead of currentLeads) {
+    const key = lead.formKey || lead.source || "unknown";
+    formLeadMap.set(key, (formLeadMap.get(key) ?? 0) + 1);
+  }
+
+  const services = constants.serviceAnalytics.map((service) => ({
+    id: service.id,
+    label: service.label,
+    path: servicePathLabel(service),
+    views: serviceViewCounts.get(service.id) ?? 0,
+    leads: countServiceLeads(currentLeads, service),
+  }));
+
+  const topPages = [...pageStats.entries()]
+    .map(([path, stats]) => ({
       path,
-      label: humanizeKey(path === "/" ? "Home" : path.replace(/^\//, "")),
-      views,
+      label:
+        findPageLabel(path, constants.pageLabels) ||
+        humanizeKey(path === "/" ? "Home" : path.replace(/^\//, "")),
+      views: stats.views,
+      engagementRate: stats.sessions.size
+        ? Math.min(100, Math.round((stats.views / stats.sessions.size) * 40))
+        : 0,
     }))
     .sort((a, b) => b.views - a.views)
     .slice(0, 10);
 
-  const currentCtaEvents = currentEvents.filter((e) => e.eventType === "cta_click");
-  const previousCtaEvents = previousEvents.filter((e) => e.eventType === "cta_click");
-  const ctaClicks = currentCtaEvents.length;
-  const previousCtaClicks = previousCtaEvents.length;
-
+  const ctaEventTypes = new Set([
+    "cta_click",
+    "phone_click",
+    "whatsapp_click",
+    "mailto_click",
+  ]);
   const ctaCounts = new Map<string, number>();
-  for (const evt of currentCtaEvents) {
-    const id = evt.ctaId || "unknown";
+  for (const evt of currentEvents) {
+    if (!ctaEventTypes.has(evt.eventType)) continue;
+    let id = evt.ctaId || "unknown";
+    if (evt.eventType === "phone_click") id = "call";
+    if (evt.eventType === "whatsapp_click") id = "whatsapp";
+    if (evt.eventType === "mailto_click") id = "contact";
     ctaCounts.set(id, (ctaCounts.get(id) ?? 0) + 1);
   }
 
-  const leadSources = new Map<string, number>();
-  for (const lead of currentLeads) {
-    const key = lead.formKey || lead.source || "unknown";
-    leadSources.set(key, (leadSources.get(key) ?? 0) + 1);
-  }
+  const previousCtaEvents = previousEvents.filter((e) =>
+    ctaEventTypes.has(e.eventType),
+  );
+  const ctaClicks = [...ctaCounts.values()].reduce((sum, n) => sum + n, 0);
+  const previousCtaClicks = previousCtaEvents.length;
+
+  const ctas = Object.keys(constants.ctaLabels).map((id) => ({
+    id,
+    label: constants.ctaLabels[id] ?? humanizeKey(id),
+    clicks: ctaCounts.get(id) ?? 0,
+  }));
+
+  const leadSources = [...formLeadMap.entries()]
+    .map(([formKey, count]) => ({
+      formKey,
+      label: humanizeKey(formKey),
+      leads: count,
+      sharePct: leadsCount ? Math.round((count / leadsCount) * 100) : 0,
+    }))
+    .sort((a, b) => b.leads - a.leads);
 
   return {
     period,
@@ -259,29 +445,15 @@ export function buildAnalyticsSnapshot(
       leadsChangePct: pctChange(leadsCount, previousLeadsCount),
       ctaClicksChangePct: pctChange(ctaClicks, previousCtaClicks),
     },
+    locales: buildLocales(currentEvents, currentLeads, constants.localeLabels),
     countries: buildBreakdown(currentEvents, "country", (k) => k.toUpperCase()),
     devices: buildBreakdown(currentEvents, "device", (k) => k),
     browsers: buildBreakdown(currentEvents, "browser", (k) => k),
-    leadSources: [...leadSources.entries()]
-      .map(([formKey, count]) => ({
-        formKey,
-        label: humanizeKey(formKey),
-        leads: count,
-        sharePct: leadsCount ? Math.round((count / leadsCount) * 100) : 0,
-      }))
-      .sort((a, b) => b.leads - a.leads),
+    leadSources,
+    services,
+    blogs: buildBlogPerformance(currentEvents),
     topPages,
-    ctas: [...ctaCounts.entries()]
-      .map(([id, clicks]) => ({
-        id,
-        label: humanizeKey(id),
-        clicks,
-        sharePct: ctaClicks ? Math.round((clicks / ctaClicks) * 100) : 0,
-        ctrPct:
-          visitors > 0 ? Number(((clicks / visitors) * 100).toFixed(2)) : 0,
-      }))
-      .sort((a, b) => b.clicks - a.clicks)
-      .slice(0, 10),
+    ctas,
   };
 }
 
@@ -298,10 +470,13 @@ export function emptyAnalyticsSnapshot(period: AnalyticsPeriod): AnalyticsSnapsh
       leadsChangePct: 0,
       ctaClicksChangePct: 0,
     },
+    locales: [],
     countries: [],
     devices: [],
     browsers: [],
     leadSources: [],
+    services: [],
+    blogs: [],
     topPages: [],
     ctas: [],
   };

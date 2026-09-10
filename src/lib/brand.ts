@@ -1,7 +1,7 @@
 export const brand = {
-  name: "ConsoleHub",
+  name: "TZ Dashboard",
   tagline: "Unified property dashboard",
-  shortName: "ConsoleHub",
+  shortName: "TZ Dashboard",
   logoSrc: "/brand/consolehub-logo.svg",
   markSrc: "/brand/consolehub-mark.svg",
 } as const;

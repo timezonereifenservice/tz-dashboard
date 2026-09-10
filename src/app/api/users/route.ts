@@ -9,6 +9,10 @@ import {
   hubUserEmailExists,
   listHubUsers,
 } from "@/lib/users/queries";
+import {
+  sanitizeNavPermissionsForRole,
+  type UserNavPermissions,
+} from "@/lib/users/nav-permissions";
 
 const USER_TYPES: UserType[] = ["ADMIN", "EDITOR", "VIEWER"];
 
@@ -17,6 +21,7 @@ type CreateBody = {
   password?: string;
   userType?: UserType;
   isActive?: boolean;
+  navPermissions?: UserNavPermissions;
 };
 
 function isUserType(value: unknown): value is UserType {
@@ -82,7 +87,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await createHubUser({ email, password, userType, isActive });
+    const navPermissions = body.navPermissions
+      ? sanitizeNavPermissionsForRole(userType, body.navPermissions)
+      : undefined;
+
+    const user = await createHubUser({
+      email,
+      password,
+      userType,
+      isActive,
+      navPermissions,
+    });
     return NextResponse.json({ user, message: "User created." }, { status: 201 });
   } catch (error) {
     console.error("[api/users POST]", error);

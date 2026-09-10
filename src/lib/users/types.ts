@@ -17,6 +17,7 @@ export type CreateHubUserInput = {
   password: string;
   userType: UserType;
   isActive?: boolean;
+  navPermissions?: UserNavPermissions;
 };
 
 export type UpdateHubUserInput = {

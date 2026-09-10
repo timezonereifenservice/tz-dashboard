@@ -26,12 +26,27 @@ type BlogImageAsset = {
   createdAt: string;
 };
 
-type CreateNewBlogPanelProps = {
-  backHref: string;
+type AdminBlog = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  status: "DRAFT" | "PUBLISHED";
+  seoTitle: string | null;
+  seoDescription: string | null;
+  coverImageAssetId: string | null;
+  contentJson: unknown;
+  imageUsages?: Array<{ imageAssetId?: string }>;
 };
 
-export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
+type CreateNewBlogPanelProps = {
+  backHref: string;
+  blogId?: string;
+};
+
+export function CreateNewBlogPanel({ backHref, blogId }: CreateNewBlogPanelProps) {
   const router = useRouter();
+  const isEditMode = Boolean(blogId);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingBlog, setIsSubmittingBlog] = useState(false);
   const [images, setImages] = useState<BlogImageAsset[]>([]);
@@ -58,10 +73,42 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
 
       if (!imagesRes.ok) throw new Error(imagesData.message ?? "Unable to load images.");
       setImages(imagesData.images ?? []);
+
+      if (blogId) {
+        const blogRes = await fetch(`/api/admin/blogs/${blogId}`);
+        const blogData = (await blogRes.json()) as {
+          blog?: AdminBlog;
+          message?: string;
+        };
+        if (!blogRes.ok || !blogData.blog) {
+          throw new Error(blogData.message ?? "Unable to load blog.");
+        }
+
+        const blog = blogData.blog;
+        const content =
+          blog.contentJson && typeof blog.contentJson === "object"
+            ? (blog.contentJson as Record<string, unknown>)
+            : {};
+
+        setBlogTitle(blog.title);
+        setBlogSlug(blog.slug);
+        setBlogExcerpt(blog.excerpt ?? "");
+        setBlogStatus(blog.status);
+        setSeoTitle(blog.seoTitle ?? "");
+        setSeoDescription(blog.seoDescription ?? "");
+        setCoverImageAssetId(blog.coverImageAssetId ?? null);
+        const firstImageId =
+          blog.imageUsages?.[0]?.imageAssetId ?? blog.coverImageAssetId;
+        setSelectedImageIds(firstImageId ? [firstImageId] : []);
+        setBlogCategory(typeof content.category === "string" ? content.category : "");
+        setBlogDate(typeof content.date === "string" ? content.date : "");
+        setBodyHtml(typeof content.bodyHtml === "string" ? content.bodyHtml : "");
+      }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to load blog editor data.",
       );
+      if (blogId) router.replace(backHref);
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +116,8 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
 
   useEffect(() => {
     void loadInitialData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when switching create vs edit
+  }, [blogId]);
 
   async function handleUploadImage(file: File) {
     const form = new FormData();
@@ -91,7 +139,7 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
     toast.success("Image uploaded and converted to WebP.");
   }
 
-  async function handleCreateBlog() {
+  async function handleSaveBlog() {
     if (!blogTitle.trim()) {
       toast.error("Blog title is required.");
       return;
@@ -104,8 +152,10 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
     setIsSubmittingBlog(true);
     try {
       const imageId = selectedImageIds[0];
-      const response = await fetch("/api/admin/blogs", {
-        method: "POST",
+      const endpoint = isEditMode ? `/api/admin/blogs/${blogId}` : "/api/admin/blogs";
+      const method = isEditMode ? "PUT" : "POST";
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: blogTitle,
@@ -126,14 +176,20 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
 
       const data = (await response.json()) as { message?: string };
       if (!response.ok) {
-        throw new Error(data.message ?? "Unable to create blog.");
+        throw new Error(
+          data.message ?? `Unable to ${isEditMode ? "update" : "create"} blog.`,
+        );
       }
 
-      toast.success("Blog created.");
+      toast.success(isEditMode ? "Blog updated." : "Blog created.");
       router.push(backHref);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to create blog.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Unable to ${isEditMode ? "update" : "create"} blog.`,
+      );
     } finally {
       setIsSubmittingBlog(false);
     }
@@ -151,11 +207,13 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
     <>
       <div className="rounded-2xl bg-white p-5 shadow-lg md:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#1f4f84]">
-          Create New Blog
+          {isEditMode ? "Edit Blog" : "Create New Blog"}
         </p>
         <h1 className="mt-2 text-2xl font-bold text-[#102738] md:text-3xl">Blog Editor</h1>
         <p className="mt-3 text-sm text-[#4a6278] md:text-base">
-          Create blogs in the same structure/style currently shown on frontend blog pages.
+          {isEditMode
+            ? "Update this blog post. All fields are prefilled with the current content."
+            : "Create blogs in the same structure/style currently shown on frontend blog pages."}
         </p>
       </div>
 
@@ -220,7 +278,11 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
           <div className="mt-4 rounded-xl border border-[#e2ebf5] p-4">
             <p className="text-sm font-semibold text-[#102738]">Blog Body (WYSIWYG)</p>
             <div className="mt-3">
-              <BlogBodyEditor editorKey="create" value={bodyHtml} onChange={setBodyHtml} />
+              <BlogBodyEditor
+                editorKey={blogId ?? "create"}
+                value={bodyHtml}
+                onChange={setBodyHtml}
+              />
             </div>
           </div>
         </div>
@@ -286,12 +348,18 @@ export function CreateNewBlogPanel({ backHref }: CreateNewBlogPanelProps) {
 
           <button
             type="button"
-            onClick={handleCreateBlog}
+            onClick={handleSaveBlog}
             disabled={isSubmittingBlog}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#183650] px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
           >
             <Save size={16} />
-            {isSubmittingBlog ? "Saving Blog..." : "Save Blog"}
+            {isSubmittingBlog
+              ? isEditMode
+                ? "Updating Blog..."
+                : "Saving Blog..."
+              : isEditMode
+                ? "Update Blog"
+                : "Save Blog"}
           </button>
         </div>
       </div>

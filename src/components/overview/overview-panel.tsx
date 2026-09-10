@@ -20,6 +20,7 @@ import type { UnifiedLead } from "@/lib/adapters/types";
 import type { OverviewMetrics } from "@/lib/adapters/types";
 import { getProjectMeta } from "@/lib/projects/meta";
 import type { ProjectConfig } from "@/lib/projects/config";
+import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
 import { ConnectivityErrorBanner } from "@/components/system";
 import {
   formatNumber,
@@ -109,27 +110,11 @@ export function OverviewPanel({
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <div className={styles.titleBlock}>
-          <div className={styles.titleRow}>
-            <h1 className={styles.title}>Overview</h1>
-          </div>
-          <p className={styles.description}>
-            Performance snapshot and quick operations for{" "}
-            <span className={styles.descriptionStrong}>{project.name}</span> (
-            <a
-              href={meta.url}
-              target="_blank"
-              rel="noreferrer"
-              className={styles.descriptionLink}
-            >
-              {meta.domain}
-            </a>
-            )
-          </p>
-        </div>
-
-        <div className={styles.controls}>
+      <DashboardPageHeader
+        eyebrow="Dashboard Overview"
+        title={`Welcome to ${project.name}`}
+        description={`Performance snapshot and quick operations for ${meta.domain}.`}
+        actions={
           <button
             type="button"
             className={styles.refreshButton}
@@ -143,8 +128,8 @@ export function OverviewPanel({
             />
             Refresh data
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {showError && error ? (
         <ConnectivityErrorBanner

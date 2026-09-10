@@ -1,0 +1,7 @@
+/* Shared card styling for dashboard pages (time-zone visual parity) */
+
+.dash-card-surface {
+  background: var(--dash-surface-lowest);
+  border-radius: var(--dash-radius-xl);
+  box-shadow: var(--dash-card-shadow);
+}

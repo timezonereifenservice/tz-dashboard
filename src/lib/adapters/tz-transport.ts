@@ -135,7 +135,7 @@ export const tzTransportAdapter: ProjectAdapter = {
     if (events.length === 0 && leads.length === 0) {
       return emptyAnalyticsSnapshot(period);
     }
-    return buildAnalyticsSnapshot(period, events, leads);
+    return buildAnalyticsSnapshot("tz-transport", period, events, leads);
   },
 
   listLeads: (options) => fetchLeads(options),

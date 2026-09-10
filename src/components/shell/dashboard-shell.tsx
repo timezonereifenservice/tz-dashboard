@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Menu } from "lucide-react";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import type { ProjectConfig } from "@/lib/projects/config";
 import type { DashboardUser } from "@/lib/auth/types";
 import shellStyles from "@/components/layout/dashboard-shell.module.css";
 import "@/styles/dashboard-tokens.css";
+import "@/styles/dashboard-page-shared.css";
 
 type DashboardShellProps = {
   user: DashboardUser;
@@ -26,10 +28,12 @@ export function DashboardShell({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div
-      className={shellStyles.shell}
-      data-project={currentProject.id}
-    >
+    <div className={shellStyles.shell} data-project={currentProject.id}>
+      <AppHeader
+        currentProject={currentProject}
+        onMenuClick={() => setMobileSidebarOpen(true)}
+      />
+
       <div className={shellStyles.layout}>
         {mobileSidebarOpen ? (
           <button
@@ -50,17 +54,23 @@ export function DashboardShell({
         />
 
         <div className={shellStyles.contentWrap}>
-          <AppHeader
-            currentProject={currentProject}
-            user={user}
-            onMenuClick={() => setMobileSidebarOpen(true)}
-          />
-
           <main className={shellStyles.main}>
             <div className={shellStyles.pageContent}>{children}</div>
           </main>
         </div>
       </div>
+
+      {!mobileSidebarOpen ? (
+        <button
+          type="button"
+          className={shellStyles.mobileMenuFab}
+          aria-label="Open navigation"
+          onClick={() => setMobileSidebarOpen(true)}
+        >
+          <Menu size={18} aria-hidden />
+          Menu
+        </button>
+      ) : null}
     </div>
   );
 }

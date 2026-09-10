@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
-import { getProjectMeta } from "@/lib/projects/meta";
+import { Check, ChevronDown } from "lucide-react";
 import {
   getProjectBySlug,
   projectHasFeature,
@@ -24,7 +24,7 @@ function getSwitchTarget(pathname: string, nextProjectId: ProjectId) {
   const project = getProjectBySlug(nextProjectId);
   if (!project) return `/${nextProjectId}/overview`;
 
-  if (pathname.startsWith("/settings")) {
+  if (pathname.startsWith("/settings") || pathname.startsWith("/users")) {
     return `/${nextProjectId}/overview`;
   }
 
@@ -37,10 +37,6 @@ function getSwitchTarget(pathname: string, nextProjectId: ProjectId) {
   const feature = SECTION_FEATURES[section];
   if (feature && !projectHasFeature(project, feature)) {
     return `/${nextProjectId}/overview`;
-  }
-
-  if (segments.length > 2) {
-    return `/${nextProjectId}/${section}`;
   }
 
   if (segments.length >= 2) {
@@ -58,37 +54,78 @@ type ProjectSwitcherProps = {
 export function ProjectSwitcher({ projects, currentProject }: ProjectSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const meta = getProjectMeta(currentProject.id);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
 
-  function onProjectChange(nextProjectId: string) {
-    if (nextProjectId === currentProject.id) return;
-    router.push(getSwitchTarget(pathname, nextProjectId as ProjectId));
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (!wrapRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, []);
+
+  function onProjectChange(nextProjectId: ProjectId) {
+    if (nextProjectId === currentProject.id) {
+      setOpen(false);
+      return;
+    }
+    setOpen(false);
+    router.push(getSwitchTarget(pathname, nextProjectId));
   }
 
   return (
-    <div className={styles.projectSwitcher}>
-      <div className={styles.projectButton}>
+    <div className={styles.projectSwitcher} ref={wrapRef}>
+      <button
+        type="button"
+        className={styles.projectButton}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label="Switch project"
+        onClick={() => setOpen((value) => !value)}
+      >
         <span className={styles.projectInfo}>
-          <span className={styles.projectDot} aria-hidden />
-          <span>
-            <span className={styles.projectName}>{currentProject.name}</span>
-            <span className={styles.projectDomain}>{meta.domain}</span>
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={currentProject.iconSrc}
+            alt=""
+            className={styles.projectIcon}
+          />
+          <span className={styles.projectName}>{currentProject.name}</span>
         </span>
         <ChevronDown size={18} aria-hidden />
-        <select
-          className={styles.projectSelect}
-          value={currentProject.id}
-          aria-label="Switch project"
-          onChange={(e) => onProjectChange(e.target.value)}
-        >
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      </button>
+
+      {open ? (
+        <div className={styles.projectMenu} role="listbox">
+          {projects.map((project) => {
+            const isActive = project.id === currentProject.id;
+            return (
+              <button
+                key={project.id}
+                type="button"
+                role="option"
+                aria-selected={isActive}
+                className={
+                  isActive ? styles.projectMenuItemActive : styles.projectMenuItem
+                }
+                onClick={() => onProjectChange(project.id)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={project.iconSrc}
+                  alt=""
+                  className={styles.projectIcon}
+                />
+                <span>{project.name}</span>
+                {isActive ? <Check size={16} aria-hidden /> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -24,6 +24,7 @@ import {
   serviceIcon,
   sourceLabel,
 } from "@/components/leads/lead-shared";
+import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
 import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
 import { getProjectMeta } from "@/lib/projects/meta";
 import type { ProjectConfig } from "@/lib/projects/config";
@@ -214,28 +215,27 @@ export function LeadsTable({
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <div>
-          <div className={styles.titleRow}>
-            <h1 className={styles.title}>{title}</h1>
+      <DashboardPageHeader
+        eyebrow="Lead Management"
+        title={title}
+        description={
+          description ??
+          "Real-time pipeline across active inquiry channels, cold-chain quotes, and freight requests."
+        }
+        actions={
+          <div className={styles.headerActions}>
             <span className={styles.totalBadge}>{formatNumber(leads.length)} Total</span>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => exportLeadsCsv(project.name, filtered)}
+            >
+              <Download size={18} aria-hidden />
+              Export CSV
+            </button>
           </div>
-          <p className={styles.description}>
-            {description ??
-              "Real-time pipeline across active inquiry channels, cold-chain quotes, and freight requests."}
-          </p>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.secondaryButton}
-            onClick={() => exportLeadsCsv(project.name, filtered)}
-          >
-            <Download size={18} aria-hidden />
-            Export CSV
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {error ? (
         <ConnectivityErrorBanner

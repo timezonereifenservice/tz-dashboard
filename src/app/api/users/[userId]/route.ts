@@ -5,6 +5,7 @@ import {
 } from "@/lib/auth/require-admin";
 import type { UserType } from "@/lib/projects/access";
 import {
+  deleteHubUser,
   getHubUserById,
   updateHubUser,
 } from "@/lib/users/queries";
@@ -111,5 +112,41 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       { message: "Unable to update user right now." },
       { status: 500 },
     );
+  }
+}
+
+export async function DELETE(_req: NextRequest, context: RouteContext) {
+  const admin = await requireAdminUser();
+  if (!admin) {
+    return NextResponse.json({ message: "Forbidden." }, { status: 403 });
+  }
+
+  const { userId } = await context.params;
+
+  if (userId === admin.id) {
+    return NextResponse.json(
+      { message: "You cannot delete your own account." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const existing = await getHubUserById(userId);
+    if (!existing) {
+      return NextResponse.json({ message: "User not found." }, { status: 404 });
+    }
+
+    await deleteHubUser(userId);
+    return NextResponse.json({ message: "User deleted." });
+  } catch (error) {
+    console.error("[api/users/[userId] DELETE]", error);
+    const message =
+      error instanceof Error ? error.message : "Unable to delete user right now.";
+    const status = /not found/i.test(message)
+      ? 404
+      : /foreign key|violates|constraint/i.test(message)
+        ? 409
+        : 500;
+    return NextResponse.json({ message }, { status });
   }
 }

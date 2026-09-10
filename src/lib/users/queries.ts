@@ -2,7 +2,10 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { authQuery } from "@/lib/db/pools";
 import type { UserType } from "@/lib/projects/access";
-import { parseUserNavPermissions } from "@/lib/users/nav-permissions";
+import {
+  parseUserNavPermissions,
+  sanitizeNavPermissionsForRole,
+} from "@/lib/users/nav-permissions";
 import type {
   CreateHubUserInput,
   HubUser,
@@ -60,12 +63,16 @@ export async function createHubUser(input: CreateHubUserInput): Promise<HubUser>
   const passwordHash = await bcrypt.hash(input.password, 12);
   const id = crypto.randomUUID();
   const isActive = input.isActive ?? true;
+  const navPermissions = sanitizeNavPermissionsForRole(
+    input.userType,
+    input.navPermissions ?? {},
+  );
 
   const { rows } = await authQuery<UserRow>(
     `INSERT INTO users (id, email, password_hash, user_type, is_active, nav_permissions_json, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, '{}'::jsonb, NOW(), NOW())
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW(), NOW())
      RETURNING ${USER_SELECT}`,
-    [id, email, passwordHash, input.userType, isActive],
+    [id, email, passwordHash, input.userType, isActive, JSON.stringify(navPermissions)],
   );
 
   const row = rows[0];
@@ -114,4 +121,14 @@ export async function hubUserEmailExists(email: string): Promise<boolean> {
     [email.trim().toLowerCase()],
   );
   return Boolean(rows[0]);
+}
+
+export async function deleteHubUser(id: string): Promise<void> {
+  const { rowCount } = await authQuery(
+    `DELETE FROM users WHERE id = $1`,
+    [id],
+  );
+  if (!rowCount) {
+    throw new Error("User not found.");
+  }
 }

@@ -24,6 +24,29 @@ export type BreakdownRow = {
   sharePct: number;
 };
 
+export type LocaleTraffic = {
+  locale: string;
+  label: string;
+  visitors: number;
+  leads: number;
+  sharePct: number;
+};
+
+export type ServiceDemandRow = {
+  id: string;
+  label: string;
+  path: string;
+  views: number;
+  leads: number;
+};
+
+export type BlogContentRow = {
+  slug: string;
+  title: string;
+  views: number;
+  ctaClicks: number;
+};
+
 export type AnalyticsDailyPoint = {
   date: string;
   label: string;
@@ -72,17 +95,21 @@ export type AnalyticsSnapshot = {
     leads: number;
     sharePct: number;
   }>;
+  locales: LocaleTraffic[];
+  services: ServiceDemandRow[];
+  blogs: BlogContentRow[];
   topPages: Array<{
     path: string;
     label: string;
     views: number;
+    engagementRate: number;
   }>;
   ctas: Array<{
     id: string;
     label: string;
     clicks: number;
-    sharePct: number;
-    ctrPct: number;
+    sharePct?: number;
+    ctrPct?: number;
   }>;
 };
 

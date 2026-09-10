@@ -1,11 +1,11 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
 
 .page {
-  --login-bg: #f8f9ff;
-  --login-on-surface: #0b1c30;
-  --login-on-surface-variant: #424750;
-  --login-primary: #00366b;
-  --login-primary-container: #1b4d89;
+  --login-bg: #eef2f8;
+  --login-on-surface: #102738;
+  --login-on-surface-variant: #4a6278;
+  --login-primary: #183650;
+  --login-primary-container: #183650;
   --login-on-primary: #ffffff;
   --login-on-primary-container: #98bfff;
   --login-on-primary-fixed: #001b3c;
@@ -27,7 +27,7 @@
   padding: 1.5rem;
   background: var(--login-bg);
   color: var(--login-on-surface);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: Poppins, system-ui, -apple-system, sans-serif;
   position: relative;
   overflow: hidden;
 }

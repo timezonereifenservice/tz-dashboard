@@ -12,6 +12,7 @@ export type ProjectConfig = {
   name: string;
   slug: ProjectId;
   description: string;
+  iconSrc: string;
   databaseEnvKey: string;
   features: ProjectFeature[];
 };
@@ -22,6 +23,7 @@ export const PROJECTS: ProjectConfig[] = [
     name: "Take & Bring",
     slug: "take-bring",
     description: "take-bring.com logistics website",
+    iconSrc: "/projects/take-bring.png",
     databaseEnvKey: "TAKE_BRING_DATABASE_URL",
     features: ["overview", "analytics", "leads", "blogs", "chatbot-leads"],
   },
@@ -30,6 +32,7 @@ export const PROJECTS: ProjectConfig[] = [
     name: "TZ Transport",
     slug: "tz-transport",
     description: "tz-transport.de marketing site",
+    iconSrc: "/projects/tz-transport.webp",
     databaseEnvKey: "TZ_TRANSPORT_DATABASE_URL",
     features: ["overview", "analytics", "leads", "blogs", "chatbot-leads"],
   },
@@ -38,6 +41,7 @@ export const PROJECTS: ProjectConfig[] = [
     name: "TZ Reifenservice",
     slug: "tz-reifenservice",
     description: "timezone-reifenservice.de",
+    iconSrc: "/projects/tz-reifenservice.png",
     databaseEnvKey: "TZ_REIFENSERVICE_DATABASE_URL",
     features: ["overview", "analytics", "leads"],
   },

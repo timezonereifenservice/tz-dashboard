@@ -11,7 +11,7 @@
   padding: 1rem;
   border-radius: 0.75rem;
   background: var(--dash-surface-low);
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
 }
 
 @media (min-width: 768px) {
@@ -144,7 +144,7 @@
 .secondaryButton {
   background: var(--dash-surface-lowest);
   color: var(--dash-on-surface);
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
 }
 
 .secondaryButton:hover {
@@ -154,7 +154,7 @@
 .primaryButton {
   background: var(--dash-primary-container);
   color: var(--dash-on-primary);
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
 }
 
 .primaryButton:hover {
@@ -173,7 +173,7 @@
   padding: 1rem;
   border-radius: 0.75rem;
   background: var(--dash-surface-lowest);
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -383,7 +383,7 @@
 .tableCard {
   background: var(--dash-surface-lowest);
   border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -774,7 +774,7 @@
   padding: 1rem;
   border-radius: 0.75rem;
   background: var(--dash-surface-lowest);
-  box-shadow: 0 1px 2px rgb(11 28 48 / 6%);
+  box-shadow: var(--dash-card-shadow);
   display: flex;
   align-items: center;
   gap: 0.75rem;

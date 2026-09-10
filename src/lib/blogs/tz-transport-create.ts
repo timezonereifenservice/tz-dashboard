@@ -204,3 +204,122 @@ export async function createTzTransportBlog(
     updatedAt: String(blog.updatedAt),
   };
 }
+
+export type UpdateTzTransportBlogInput = {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  status?: "DRAFT" | "PUBLISHED";
+  seoTitle?: string;
+  seoDescription?: string;
+  contentJson?: unknown;
+  selectedImageIds?: string[];
+  coverImageAssetId?: string | null;
+};
+
+function toDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+  return value instanceof Date ? value : new Date(value);
+}
+
+export async function getTzTransportBlogById(blogId: string) {
+  const { rows } = await projectQuery(
+    "tz-transport",
+    `SELECT
+      b.*,
+      COALESCE((
+        SELECT json_agg(json_build_object('imageAssetId', u.image_asset_id) ORDER BY u.sort_order)
+        FROM blog_image_usages u
+        WHERE u.blog_id = b.id
+      ), '[]'::json) AS image_usages
+    FROM blogs b
+    WHERE b.id = $1
+    LIMIT 1`,
+    [blogId],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return adminBlogFromSqlRow(row as Record<string, unknown>);
+}
+
+export async function updateTzTransportBlogRecord(
+  blogId: string,
+  input: UpdateTzTransportBlogInput,
+) {
+  const { rows: existingRows } = await projectQuery<{
+    id: string;
+    published_at: Date | string | null;
+  }>(
+    "tz-transport",
+    `SELECT id, published_at FROM blogs WHERE id = $1 LIMIT 1`,
+    [blogId],
+  );
+  const existingBlog = existingRows[0];
+  if (!existingBlog) throw new Error("Blog not found.");
+
+  const title = input.title.trim();
+  if (!title) throw new Error("Blog title is required.");
+
+  const selectedImageIds = Array.from(new Set(input.selectedImageIds ?? [])).slice(
+    0,
+    1,
+  );
+  if (!selectedImageIds.length) {
+    throw new Error("One image is required for blog.");
+  }
+
+  const baseSlug = normalizeBlogSlug(title, input.slug);
+  const candidateSlug = await ensureUniqueBlogSlug("tz-transport", baseSlug, blogId);
+  const coverImageAssetId =
+    input.coverImageAssetId && selectedImageIds.includes(input.coverImageAssetId)
+      ? input.coverImageAssetId
+      : selectedImageIds[0];
+  const shouldPublish = input.status === "PUBLISHED";
+  const contentJson =
+    input.contentJson && typeof input.contentJson === "object"
+      ? { ...(input.contentJson as Record<string, unknown>) }
+      : {};
+  delete contentJson.secondaryImageAssetId;
+
+  const row = await withProjectTransaction("tz-transport", async (query) => {
+    const updatedBlogResult = await query(
+      `UPDATE blogs
+       SET title = $1,
+           slug = $2,
+           excerpt = $3,
+           status = $4,
+           cover_image_asset_id = $5,
+           seo_title = $6,
+           seo_description = $7,
+           content_json = $8,
+           published_at = $9,
+           updated_at = NOW()
+       WHERE id = $10
+       RETURNING *`,
+      [
+        title,
+        candidateSlug,
+        input.excerpt?.trim() || null,
+        input.status ?? "DRAFT",
+        coverImageAssetId,
+        input.seoTitle?.trim() || null,
+        input.seoDescription?.trim() || null,
+        contentJson,
+        shouldPublish ? toDate(existingBlog.published_at) ?? new Date() : null,
+        blogId,
+      ],
+    );
+
+    await query(`DELETE FROM blog_image_usages WHERE blog_id = $1`, [blogId]);
+    await query(
+      `INSERT INTO blog_image_usages (id, blog_id, image_asset_id, sort_order, is_cover, created_at)
+       VALUES ($1, $2, $3, 0, TRUE, NOW())`,
+      [crypto.randomUUID(), blogId, coverImageAssetId],
+    );
+
+    return updatedBlogResult.rows[0];
+  });
+
+  if (!row) throw new Error("Failed to update blog.");
+  return adminBlogFromSqlRow(row as Record<string, unknown>);
+}

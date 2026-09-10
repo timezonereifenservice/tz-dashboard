@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogOut, Mail, ShieldCheck } from "lucide-react";
 import { settingsNavItem, usersNavItem } from "@/lib/dashboard-nav";
 import {
   canAccessUsersMenu,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/users/nav-permissions";
 import { brand } from "@/lib/brand";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
+import { useLogout } from "@/hooks/use-logout";
 import type { ProjectConfig } from "@/lib/projects/config";
 import type { DashboardUser } from "@/lib/auth/types";
 import styles from "./sidebar.module.css";
@@ -31,11 +33,17 @@ export function AppSidebar({
   onNavigate,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const { logout, pending } = useLogout();
   const navItems = getNavItemsForUser(
     currentProject.id,
     user.userType,
     user.navPermissions,
   );
+
+  async function handleLogout() {
+    await logout();
+    onNavigate?.();
+  }
 
   return (
     <aside
@@ -43,12 +51,25 @@ export function AppSidebar({
       aria-label="Main navigation"
     >
       <div className={styles.body}>
-        <div className={styles.brand}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={brand.markSrc} alt="" className={styles.logo} />
-          <div className={styles.brandText}>
+        <div className={styles.brandCard}>
+          <div className={styles.brandTop}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={currentProject.iconSrc}
+              alt=""
+              className={styles.brandLogo}
+            />
             <span className={styles.brandName}>{brand.name}</span>
-            <span className={styles.brandTagline}>{brand.tagline}</span>
+          </div>
+          <div className={styles.brandMeta}>
+            <p className={styles.brandEmail}>
+              <Mail size={14} aria-hidden />
+              <span>{user.email}</span>
+            </p>
+            <p className={styles.brandRole}>
+              <ShieldCheck size={14} aria-hidden />
+              <span>{user.userType}</span>
+            </p>
           </div>
         </div>
 
@@ -71,7 +92,7 @@ export function AppSidebar({
                   onClick={onNavigate}
                 >
                   <span className={styles.navLinkInner}>
-                    <Icon size={20} strokeWidth={1.75} aria-hidden />
+                    <Icon size={18} strokeWidth={1.75} aria-hidden />
                     <span>{item.label}</span>
                   </span>
                   {item.id === "leads" && newLeadsCount > 0 ? (
@@ -98,7 +119,7 @@ export function AppSidebar({
                 onClick={onNavigate}
               >
                 <span className={styles.navLinkInner}>
-                  <usersNavItem.icon size={20} strokeWidth={1.75} aria-hidden />
+                  <usersNavItem.icon size={18} strokeWidth={1.75} aria-hidden />
                   <span>{usersNavItem.label}</span>
                 </span>
               </Link>
@@ -111,7 +132,7 @@ export function AppSidebar({
               onClick={onNavigate}
             >
               <span className={styles.navLinkInner}>
-                <settingsNavItem.icon size={20} strokeWidth={1.75} aria-hidden />
+                <settingsNavItem.icon size={18} strokeWidth={1.75} aria-hidden />
                 <span>{settingsNavItem.label}</span>
               </span>
             </Link>
@@ -124,9 +145,15 @@ export function AppSidebar({
           <span className={styles.roleLabel}>Role</span>
           <span className={styles.roleBadge}>{user.userType}</span>
         </div>
-        <div className={styles.footerMeta}>
-          <span>{brand.name}</span>
-        </div>
+        <button
+          type="button"
+          className={styles.logoutButton}
+          disabled={pending}
+          onClick={handleLogout}
+        >
+          <LogOut size={18} aria-hidden />
+          {pending ? "Logging out…" : "Logout"}
+        </button>
       </div>
     </aside>
   );
