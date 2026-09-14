@@ -19,6 +19,7 @@ import {
   Shield,
   Snowflake,
   Star,
+  Wrench,
 } from "lucide-react";
 import type { UnifiedLead } from "@/lib/adapters/types";
 import { getProjectMeta } from "@/lib/projects/meta";
@@ -30,10 +31,16 @@ import {
 } from "@/lib/utils";
 import {
   LeadsStatusBadge,
-  STATUS_OPTIONS,
+  getLeadStatusOptions,
   leadReference,
   sourceLabel,
 } from "@/components/leads/lead-shared";
+import {
+  displaySourcePage,
+  normalizeLeadFormFields,
+  reifenserviceTypeLabel,
+  type LeadFormField,
+} from "@/lib/leads/reifenservice";
 import { ToastNotification } from "@/components/system";
 import styles from "./lead-detail.module.css";
 
@@ -99,12 +106,20 @@ function buildTimeline(lead: UnifiedLead, source: string) {
   return events;
 }
 
+function getLeadFormFields(lead: UnifiedLead): LeadFormField[] {
+  return normalizeLeadFormFields(lead.meta.formFields);
+}
+
 export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
   const router = useRouter();
   const meta = getProjectMeta(project.id);
+  const isReifenservice = project.id === "tz-reifenservice";
+  const statusOptions = getLeadStatusOptions(project.id);
+  const formFields = getLeadFormFields(lead);
   const reference = leadReference(project.slug, lead.id);
   const created = formatLeadCreated(lead.createdAt);
-  const source = sourceLabel(lead);
+  const source = sourceLabel(lead, project.id);
+  const pagePath = displaySourcePage(lead.sourcePage);
 
   const [status, setStatus] = useState(lead.status);
   const [notes, setNotes] = useState("");
@@ -283,13 +298,21 @@ export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
                 <span className={styles.fieldHint}>{meta.domain}</span>
               </div>
               <div className={styles.fieldBox}>
-                <span className={styles.fieldLabel}>Form / Page</span>
-                <span className={styles.fieldValue}>{lead.formKey || "—"}</span>
-                <span className={styles.fieldHint}>{lead.sourcePage || "—"}</span>
+                <span className={styles.fieldLabel}>
+                  {isReifenservice ? "Form Source" : "Form / Page"}
+                </span>
+                <span className={styles.fieldValue}>{source}</span>
+                <span className={styles.fieldHint}>
+                  {pagePath || lead.formKey || "—"}
+                </span>
               </div>
               <div className={styles.fieldBox}>
                 <span className={styles.fieldLabel}>Lead Type</span>
-                <span className={styles.fieldValue}>{lead.type || lead.source || "—"}</span>
+                <span className={styles.fieldValue}>
+                  {isReifenservice
+                    ? reifenserviceTypeLabel(lead.type)
+                    : lead.type || lead.source || "—"}
+                </span>
                 <span className={styles.fieldHint}>Source classification</span>
               </div>
               <div className={styles.fieldBox}>
@@ -300,20 +323,62 @@ export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
             </div>
           </section>
 
+          {formFields.length > 0 ? (
+            <section className={styles.card}>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardTitleWrap}>
+                  <div className={styles.cardIcon}>
+                    <FileText size={22} aria-hidden />
+                  </div>
+                  <div>
+                    <h2 className={styles.cardTitle}>Form Submissions</h2>
+                    <p className={styles.cardSubtitle}>
+                      All fields submitted from the website form
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.formFieldsList}>
+                {formFields.map((field) => (
+                  <div key={`${field.key}-${field.label}`} className={styles.formFieldRow}>
+                    <span className={styles.fieldLabel}>{field.label}</span>
+                    <span className={styles.fieldValue}>{field.value || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className={styles.card}>
             <div className={styles.cardHeader}>
               <div className={styles.cardTitleWrap}>
                 <div className={styles.cardIcon}>
-                  <Snowflake size={22} aria-hidden />
+                  {isReifenservice ? (
+                    <Wrench size={22} aria-hidden />
+                  ) : (
+                    <Snowflake size={22} aria-hidden />
+                  )}
                 </div>
                 <div>
-                  <h2 className={styles.cardTitle}>Cargo & Transport Requirements</h2>
-                  <p className={styles.cardSubtitle}>Service scope and routing context from submission</p>
+                  <h2 className={styles.cardTitle}>
+                    {isReifenservice
+                      ? "Service & Request Details"
+                      : "Cargo & Transport Requirements"}
+                  </h2>
+                  <p className={styles.cardSubtitle}>
+                    {isReifenservice
+                      ? "Requested workshop service and inquiry context"
+                      : "Service scope and routing context from submission"}
+                  </p>
                 </div>
               </div>
               {lead.service ? (
                 <span className={styles.serviceBadge}>
-                  <Snowflake size={16} aria-hidden />
+                  {isReifenservice ? (
+                    <Wrench size={16} aria-hidden />
+                  ) : (
+                    <Snowflake size={16} aria-hidden />
+                  )}
                   {lead.service}
                 </span>
               ) : null}
@@ -322,17 +387,24 @@ export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
             <div className={styles.servicePanel}>
               <div className={styles.serviceTitle}>
                 <Route size={18} aria-hidden />
-                <span>{lead.service || "General logistics inquiry"}</span>
+                <span>
+                  {lead.service ||
+                    (isReifenservice ? "General workshop inquiry" : "General logistics inquiry")}
+                </span>
               </div>
-              {lead.sourcePage ? (
+              {pagePath ? (
                 <p className={styles.serviceMeta}>
-                  Submitted from page: <strong>{lead.sourcePage}</strong>
+                  Submitted from page: <strong>{pagePath}</strong>
                 </p>
               ) : null}
               {lead.message ? (
                 <p className={styles.serviceMeta}>{lead.message}</p>
               ) : (
-                <p className={styles.serviceMeta}>No additional transport details were provided.</p>
+                <p className={styles.serviceMeta}>
+                  {isReifenservice
+                    ? "No additional message was provided."
+                    : "No additional transport details were provided."}
+                </p>
               )}
             </div>
 
@@ -348,7 +420,7 @@ export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
             </div>
           </section>
 
-          {lead.message ? (
+          {lead.message && formFields.length === 0 ? (
             <section className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.cardTitleWrap}>
@@ -439,7 +511,7 @@ export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               >
-                {STATUS_OPTIONS.map((option) => (
+                {statusOptions.map((option) => (
                   <option key={option} value={option}>
                     {option.replace(/_/g, " ")}
                   </option>
@@ -526,7 +598,7 @@ export function LeadDetailPanel({ project, lead }: LeadDetailPanelProps) {
               </div>
               <p className={styles.metaHint}>
                 Source: {source}
-                {lead.sourcePage ? ` • Page: ${lead.sourcePage}` : ""}
+                {pagePath ? ` • Page: ${pagePath}` : ""}
               </p>
             </div>
           </section>

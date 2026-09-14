@@ -1,5 +1,9 @@
 import { projectQuery } from "@/lib/db/pools";
 import {
+  isReifenserviceLeadStatus,
+  normalizeLeadFormFields,
+} from "@/lib/leads/reifenservice";
+import {
   buildAnalyticsSnapshot,
   emptyAnalyticsSnapshot,
   sinceIso,
@@ -17,9 +21,10 @@ type LeadRow = Record<string, unknown>;
 type EventRow = Record<string, unknown>;
 
 const LEAD_SELECT = `id, created_at, updated_at, type, status, form_key, source_page, source_label,
-  full_name, email, phone, service, message, source`;
+  full_name, email, phone, service, message, source, form_fields`;
 
 function mapLead(row: LeadRow): UnifiedLead {
+  const formFields = normalizeLeadFormFields(row.form_fields);
   return {
     id: String(row.id),
     fullName: String(row.full_name ?? ""),
@@ -36,6 +41,7 @@ function mapLead(row: LeadRow): UnifiedLead {
     updatedAt: String(row.updated_at ?? ""),
     meta: {
       sourceLabel: row.source_label,
+      formFields,
     },
   };
 }
@@ -144,6 +150,12 @@ export const tzReifenserviceAdapter: ProjectAdapter = {
   },
 
   async updateLeadStatus(id: string, status: string) {
+    if (!isReifenserviceLeadStatus(status)) {
+      throw new Error(
+        "Invalid status. Allowed values are NEW, READ, and ARCHIVED.",
+      );
+    }
+
     const { rows } = await projectQuery(
       "tz-reifenservice",
       `UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING ${LEAD_SELECT}`,

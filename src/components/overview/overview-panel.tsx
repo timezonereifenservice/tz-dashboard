@@ -16,8 +16,10 @@ import {
   Truck,
   Users,
 } from "lucide-react";
+import { sourceLabel } from "@/components/leads/lead-shared";
 import type { UnifiedLead } from "@/lib/adapters/types";
 import type { OverviewMetrics } from "@/lib/adapters/types";
+import { reifenserviceTypeLabel } from "@/lib/leads/reifenservice";
 import { getProjectMeta } from "@/lib/projects/meta";
 import type { ProjectConfig } from "@/lib/projects/config";
 import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
@@ -75,8 +77,20 @@ export function OverviewPanel({
 }: OverviewPanelProps) {
   const router = useRouter();
   const meta = getProjectMeta(project.id);
+  const isReifenservice = project.id === "tz-reifenservice";
   const [refreshing, setRefreshing] = useState(false);
   const [showError, setShowError] = useState(Boolean(error));
+
+  function inquirySubtitle(lead: UnifiedLead) {
+    if (isReifenservice) {
+      const parts = [
+        lead.service || reifenserviceTypeLabel(lead.type),
+        sourceLabel(lead, project.id),
+      ].filter(Boolean);
+      return parts.join(" · ");
+    }
+    return lead.service || lead.formKey || lead.source || "General inquiry";
+  }
 
   async function refreshData() {
     setRefreshing(true);
@@ -295,7 +309,7 @@ export function OverviewPanel({
                         {lead.fullName || "Unknown contact"}
                       </div>
                       <div className={styles.inquiryService}>
-                        {lead.service || lead.formKey || lead.source || "General inquiry"}
+                        {inquirySubtitle(lead)}
                       </div>
                     </div>
                   </div>

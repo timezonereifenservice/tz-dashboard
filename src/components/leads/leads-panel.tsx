@@ -20,10 +20,17 @@ import {
 } from "lucide-react";
 import {
   LeadsStatusBadge,
-  STATUS_OPTIONS,
+  getLeadStatusOptions,
+  leadTypeIcon,
   serviceIcon,
   sourceLabel,
 } from "@/components/leads/lead-shared";
+import {
+  REIFENSERVICE_TYPE_FILTERS,
+  displaySourcePage,
+  reifenserviceTypeLabel,
+  type ReifenserviceLeadType,
+} from "@/lib/leads/reifenservice";
 import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
 import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
 import { getProjectMeta } from "@/lib/projects/meta";
@@ -64,25 +71,44 @@ function isToday(value: string) {
   return date.toDateString() === new Date().toDateString();
 }
 
-function exportLeadsCsv(projectName: string, leads: UnifiedLead[]) {
+function exportLeadsCsv(
+  project: ProjectConfig,
+  leads: UnifiedLead[],
+) {
+  const isReifenservice = project.id === "tz-reifenservice";
   const rows = [
-    ["Name", "Email", "Phone", "Service", "Source", "Status", "Created"],
-    ...leads.map((lead) => [
-      lead.fullName,
-      lead.email,
-      lead.phone,
-      lead.service,
-      sourceLabel(lead),
-      lead.status,
-      lead.createdAt,
-    ]),
+    isReifenservice
+      ? ["Date", "Name", "Email", "Phone", "Service", "Source", "Type", "Status"]
+      : ["Name", "Email", "Phone", "Service", "Source", "Status", "Created"],
+    ...leads.map((lead) =>
+      isReifenservice
+        ? [
+            lead.createdAt,
+            lead.fullName,
+            lead.email,
+            lead.phone,
+            lead.service,
+            sourceLabel(lead, project.id),
+            reifenserviceTypeLabel(lead.type),
+            lead.status,
+          ]
+        : [
+            lead.fullName,
+            lead.email,
+            lead.phone,
+            lead.service,
+            sourceLabel(lead, project.id),
+            lead.status,
+            lead.createdAt,
+          ],
+    ),
   ];
   const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${projectName.toLowerCase().replace(/\s+/g, "-")}-leads.csv`;
+  link.download = `${project.name.toLowerCase().replace(/\s+/g, "-")}-leads.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -105,9 +131,12 @@ export function LeadsTable({
 }: LeadsTableProps) {
   const router = useRouter();
   const meta = getProjectMeta(project.id);
+  const isReifenservice = project.id === "tz-reifenservice";
+  const statusOptions = getLeadStatusOptions(project.id);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [serviceFilter, setServiceFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState<ReifenserviceLeadType | "ALL">("ALL");
   const [dateFilter, setDateFilter] = useState<"ALL" | "7d" | "30d">("30d");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(1);
@@ -123,6 +152,8 @@ export function LeadsTable({
 
   const filtered = useMemo(() => {
     return leads.filter((lead) => {
+      const sourceLabelValue =
+        typeof lead.meta.sourceLabel === "string" ? lead.meta.sourceLabel : "";
       const haystack = [
         lead.fullName,
         lead.email,
@@ -132,6 +163,8 @@ export function LeadsTable({
         lead.formKey,
         lead.source,
         lead.sourcePage,
+        sourceLabelValue,
+        lead.type,
       ]
         .join(" ")
         .toLowerCase();
@@ -139,14 +172,24 @@ export function LeadsTable({
       const matchesQuery = !query || haystack.includes(query.toLowerCase());
       const matchesStatus = statusFilter === "ALL" || lead.status === statusFilter;
       const matchesService =
-        serviceFilter === "ALL" || lead.service.trim() === serviceFilter;
+        !isReifenservice ||
+        serviceFilter === "ALL" ||
+        lead.service.trim() === serviceFilter;
+      const matchesType =
+        !isReifenservice || typeFilter === "ALL" || lead.type === typeFilter;
       const matchesDate =
         dateFilter === "ALL" ||
         (dateFilter === "7d" ? isWithinDays(lead.createdAt, 7) : isWithinDays(lead.createdAt, 30));
 
-      return matchesQuery && matchesStatus && matchesService && matchesDate;
+      return (
+        matchesQuery &&
+        matchesStatus &&
+        matchesService &&
+        matchesType &&
+        matchesDate
+      );
     });
-  }, [leads, query, statusFilter, serviceFilter, dateFilter]);
+  }, [leads, query, statusFilter, serviceFilter, typeFilter, dateFilter, isReifenservice]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
@@ -169,15 +212,20 @@ export function LeadsTable({
           leads.length) *
         100;
   const recentCount = leads.filter((lead) => isWithinDays(lead.createdAt, 30)).length;
+  const serviceInquiryCount = leads.filter((lead) => lead.type === "service").length;
+  const contactInquiryCount = leads.filter((lead) => lead.type === "contact").length;
 
   const activeFilterLabels = useMemo(() => {
     return [
       statusFilter !== "ALL" ? `Status: ${statusFilter}` : null,
+      isReifenservice && typeFilter !== "ALL"
+        ? `Type: ${reifenserviceTypeLabel(typeFilter)}`
+        : null,
       serviceFilter !== "ALL" ? `Service: ${serviceFilter}` : null,
       dateFilter === "7d" ? "Range: Last 7 Days" : dateFilter === "30d" ? "Range: Last 30 Days" : null,
       query ? `Search: "${query}"` : null,
     ].filter(Boolean) as string[];
-  }, [statusFilter, serviceFilter, dateFilter, query]);
+  }, [statusFilter, serviceFilter, typeFilter, dateFilter, query, isReifenservice]);
 
   const allVisibleSelected =
     pageLeads.length > 0 && pageLeads.every((lead) => selectedIds.has(lead.id));
@@ -207,6 +255,7 @@ export function LeadsTable({
     setQuery("");
     setStatusFilter("ALL");
     setServiceFilter("ALL");
+    setTypeFilter("ALL");
     setDateFilter("ALL");
     setPage(1);
   }
@@ -220,7 +269,9 @@ export function LeadsTable({
         title={title}
         description={
           description ??
-          "Real-time pipeline across active inquiry channels, cold-chain quotes, and freight requests."
+          (isReifenservice
+            ? "Contact forms, WhatsApp clicks, phone inquiries, and service requests from timezone-reifenservice.de."
+            : "Real-time pipeline across active inquiry channels, cold-chain quotes, and freight requests.")
         }
         actions={
           <div className={styles.headerActions}>
@@ -228,7 +279,7 @@ export function LeadsTable({
             <button
               type="button"
               className={styles.secondaryButton}
-              onClick={() => exportLeadsCsv(project.name, filtered)}
+              onClick={() => exportLeadsCsv(project, filtered)}
             >
               <Download size={18} aria-hidden />
               Export CSV
@@ -254,7 +305,11 @@ export function LeadsTable({
             <input
               type="search"
               className={styles.searchInput}
-              placeholder="Search name, email, phone, service, or form..."
+              placeholder={
+                isReifenservice
+                  ? "Search name, email, phone, service, or source…"
+                  : "Search name, email, phone, service, or form..."
+              }
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -274,7 +329,7 @@ export function LeadsTable({
                 }}
               >
                 <option value="ALL">All Statuses</option>
-                {STATUS_OPTIONS.map((status) => (
+                {statusOptions.map((status) => (
                   <option key={status} value={status}>
                     {status}
                   </option>
@@ -282,23 +337,25 @@ export function LeadsTable({
               </select>
             </label>
 
-            <label className={styles.filterSelect}>
-              <span className={styles.filterLabel}>Service:</span>
-              <select
-                value={serviceFilter}
-                onChange={(e) => {
-                  setServiceFilter(e.target.value);
-                  setPage(1);
-                }}
-              >
-                <option value="ALL">All Services</option>
-                {serviceOptions.map((service) => (
-                  <option key={service} value={service}>
-                    {service}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {isReifenservice ? null : (
+              <label className={styles.filterSelect}>
+                <span className={styles.filterLabel}>Service:</span>
+                <select
+                  value={serviceFilter}
+                  onChange={(e) => {
+                    setServiceFilter(e.target.value);
+                    setPage(1);
+                  }}
+                >
+                  <option value="ALL">All Services</option>
+                  {serviceOptions.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             <label className={styles.filterSelect}>
               <select
@@ -334,6 +391,26 @@ export function LeadsTable({
             <strong>{formatNumber(leads.length)}</strong> leads
           </div>
         </div>
+
+        {isReifenservice ? (
+          <div className={styles.typeFilters}>
+            {REIFENSERVICE_TYPE_FILTERS.map((filter) => (
+              <button
+                key={filter.id}
+                type="button"
+                className={`${styles.typeFilter} ${
+                  typeFilter === filter.id ? styles.typeFilterActive : ""
+                }`}
+                onClick={() => {
+                  setTypeFilter(filter.id);
+                  setPage(1);
+                }}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {selectedIds.size > 0 ? (
@@ -371,7 +448,9 @@ export function LeadsTable({
             }
             description={
               leads.length === 0 ? (
-                "Inbound inquiries will appear here once forms and API feeds start syncing."
+                isReifenservice
+                  ? "Contact forms, WhatsApp clicks, and service requests from timezone-reifenservice.de will appear here automatically."
+                  : "Inbound inquiries will appear here once forms and API feeds start syncing."
               ) : (
                 <>
                   We couldn&apos;t find any leads matching your current filters.
@@ -405,8 +484,9 @@ export function LeadsTable({
                   />
                 </th>
                 <th>Contact</th>
-                <th>Service & Route</th>
+                <th>{isReifenservice ? "Leistung" : "Service & Route"}</th>
                 <th>Source</th>
+                {isReifenservice ? <th>Type</th> : null}
                 <th>Status</th>
                 <th>Created</th>
                 <th className={styles.tableHeadRight}>Action</th>
@@ -416,6 +496,8 @@ export function LeadsTable({
                 {pageLeads.map((lead, index) => {
                   const created = formatLeadCreated(lead.createdAt);
                   const isNew = lead.status === "NEW";
+                  const pagePath = displaySourcePage(lead.sourcePage);
+                  const leadSource = sourceLabel(lead, project.id);
                   return (
                     <tr
                       key={lead.id}
@@ -446,15 +528,15 @@ export function LeadsTable({
                       </td>
                       <td>
                         <div className={styles.serviceTitle}>
-                          {serviceIcon(lead.service)}
-                          <span>{lead.service || "General inquiry"}</span>
+                          {serviceIcon(lead.service, project.id)}
+                          <span>{lead.service || (isReifenservice ? "—" : "General inquiry")}</span>
                         </div>
-                        {lead.sourcePage ? (
+                        {!isReifenservice && lead.sourcePage ? (
                           <div className={styles.serviceRoute}>
                             <span>{lead.sourcePage}</span>
                           </div>
                         ) : null}
-                        {lead.message ? (
+                        {!isReifenservice && lead.message ? (
                           <div className={styles.serviceMeta}>
                             {lead.message.slice(0, 72)}
                             {lead.message.length > 72 ? "…" : ""}
@@ -462,8 +544,21 @@ export function LeadsTable({
                         ) : null}
                       </td>
                       <td>
-                        <span className={styles.sourceBadge}>{sourceLabel(lead)}</span>
+                        <div className={styles.sourceTitle}>{leadSource}</div>
+                        {pagePath ? (
+                          <div className={styles.serviceRoute}>
+                            <span>{pagePath}</span>
+                          </div>
+                        ) : null}
                       </td>
+                      {isReifenservice ? (
+                        <td>
+                          <span className={styles.typeBadge}>
+                            {leadTypeIcon(lead.type)}
+                            {reifenserviceTypeLabel(lead.type)}
+                          </span>
+                        </td>
+                      ) : null}
                       <td>
                         <LeadsStatusBadge status={lead.status} />
                       </td>
@@ -566,24 +661,49 @@ export function LeadsTable({
             <div className={styles.metricLabel}>New Today</div>
           </div>
         </article>
-        <article className={styles.metricCard}>
-          <div className={`${styles.metricIcon} ${styles.metricIconSecondary}`}>
-            <Verified size={22} aria-hidden />
-          </div>
-          <div>
-            <div className={styles.metricValue}>{formatPct(Number(qualificationRate.toFixed(1)))}</div>
-            <div className={styles.metricLabel}>Qualification Rate</div>
-          </div>
-        </article>
-        <article className={styles.metricCard}>
-          <div className={`${styles.metricIcon} ${styles.metricIconSky}`}>
-            <Truck size={22} aria-hidden />
-          </div>
-          <div>
-            <div className={styles.metricValue}>{formatPct(Number(coldShare.toFixed(1)))}</div>
-            <div className={styles.metricLabel}>Cold-chain Share</div>
-          </div>
-        </article>
+        {isReifenservice ? (
+          <>
+            <article className={styles.metricCard}>
+              <div className={`${styles.metricIcon} ${styles.metricIconSecondary}`}>
+                <MailOpen size={22} aria-hidden />
+              </div>
+              <div>
+                <div className={styles.metricValue}>{formatNumber(contactInquiryCount)}</div>
+                <div className={styles.metricLabel}>Contact Forms</div>
+              </div>
+            </article>
+            <article className={styles.metricCard}>
+              <div className={`${styles.metricIcon} ${styles.metricIconSky}`}>
+                <Truck size={22} aria-hidden />
+              </div>
+              <div>
+                <div className={styles.metricValue}>{formatNumber(serviceInquiryCount)}</div>
+                <div className={styles.metricLabel}>Service Requests</div>
+              </div>
+            </article>
+          </>
+        ) : (
+          <>
+            <article className={styles.metricCard}>
+              <div className={`${styles.metricIcon} ${styles.metricIconSecondary}`}>
+                <Verified size={22} aria-hidden />
+              </div>
+              <div>
+                <div className={styles.metricValue}>{formatPct(Number(qualificationRate.toFixed(1)))}</div>
+                <div className={styles.metricLabel}>Qualification Rate</div>
+              </div>
+            </article>
+            <article className={styles.metricCard}>
+              <div className={`${styles.metricIcon} ${styles.metricIconSky}`}>
+                <Truck size={22} aria-hidden />
+              </div>
+              <div>
+                <div className={styles.metricValue}>{formatPct(Number(coldShare.toFixed(1)))}</div>
+                <div className={styles.metricLabel}>Cold-chain Share</div>
+              </div>
+            </article>
+          </>
+        )}
         <article className={styles.metricCard}>
           <div className={`${styles.metricIcon} ${styles.metricIconTeal}`}>
             <TrendingUp size={22} aria-hidden />
