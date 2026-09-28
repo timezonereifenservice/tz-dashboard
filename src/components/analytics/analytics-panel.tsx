@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
@@ -20,15 +19,14 @@ import {
   KpiCard,
   SegmentedControl,
 } from "@/components/ui/tz-dashboard";
-import { buildAnalyticsView } from "@/lib/adapters/analytics-engine";
-import type { AnalyticsPeriod, AnalyticsRawData } from "@/lib/adapters/types";
+import type { AnalyticsPeriod, AnalyticsSnapshot } from "@/lib/adapters/types";
 import type { ProjectConfig } from "@/lib/projects/config";
 import styles from "./analytics.module.css";
 
 type AnalyticsPanelProps = {
   project: ProjectConfig;
-  initialPeriod: AnalyticsPeriod;
-  rawData: AnalyticsRawData;
+  period: AnalyticsPeriod;
+  snapshot: AnalyticsSnapshot;
   error: string | null;
 };
 
@@ -39,18 +37,12 @@ const PERIOD_OPTIONS = [
 
 export function AnalyticsPanel({
   project,
-  initialPeriod,
-  rawData,
+  period,
+  snapshot,
   error,
 }: AnalyticsPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const period = (searchParams.get("period") === "7d" ? "7d" : initialPeriod) as AnalyticsPeriod;
-
-  const { snapshot } = useMemo(
-    () => buildAnalyticsView(project.id, period, rawData.events, rawData.leads),
-    [project.id, period, rawData.events, rawData.leads],
-  );
 
   function onChangePeriod(nextPeriod: AnalyticsPeriod) {
     const params = new URLSearchParams(searchParams.toString());

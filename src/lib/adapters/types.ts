@@ -135,6 +135,9 @@ export type UnifiedBlog = {
 
 export interface ProjectAdapter {
   getOverviewMetrics(): Promise<OverviewMetrics>;
+  /** Lightweight COUNT for layout badge — avoids full overview metrics on every navigation. */
+  getNewLeadsCount30d(): Promise<number>;
+  getRecentLeads(limit: number): Promise<UnifiedLead[]>;
   getAnalyticsSnapshot(period: AnalyticsPeriod): Promise<AnalyticsSnapshot>;
   getAnalyticsRawData(period: AnalyticsPeriod): Promise<AnalyticsRawData>;
   listLeads(options?: { chatbotOnly?: boolean }): Promise<UnifiedLead[]>;

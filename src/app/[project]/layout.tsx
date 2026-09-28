@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { DashboardShell } from "@/components/shell/dashboard-shell";
-import { getAdapter } from "@/lib/adapters/registry";
+import { getCachedNewLeadsCount30d } from "@/lib/server/cached-metrics";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   canAccessProject,
@@ -31,8 +31,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps) {
 
   let newLeadsCount = 0;
   try {
-    const metrics = await getAdapter(project.id as ProjectId).getOverviewMetrics();
-    newLeadsCount = metrics.newLeads30d;
+    newLeadsCount = await getCachedNewLeadsCount30d(project.id as ProjectId);
   } catch {
     newLeadsCount = 0;
   }

@@ -3,7 +3,9 @@ export type ProjectFeature =
   | "analytics"
   | "leads"
   | "blogs"
-  | "chatbot-leads";
+  | "chatbot-leads"
+  | "marketing-analytics"
+  | "marketing-leads";
 
 export type ProjectId = "take-bring" | "tz-transport" | "tz-reifenservice";
 
@@ -14,6 +16,8 @@ export type ProjectConfig = {
   description: string;
   iconSrc: string;
   databaseEnvKey: string;
+  /** Optional second database (e.g. offers landing pages). */
+  offersDatabaseEnvKey?: string;
   features: ProjectFeature[];
 };
 
@@ -43,7 +47,14 @@ export const PROJECTS: ProjectConfig[] = [
     description: "timezone-reifenservice.de",
     iconSrc: "/projects/tz-reifenservice.png",
     databaseEnvKey: "TZ_REIFENSERVICE_DATABASE_URL",
-    features: ["overview", "analytics", "leads"],
+    offersDatabaseEnvKey: "TZ_REIFENSERVICE_OFFERS_DATABASE_URL",
+    features: [
+      "overview",
+      "analytics",
+      "leads",
+      "marketing-analytics",
+      "marketing-leads",
+    ],
   },
 ];
 

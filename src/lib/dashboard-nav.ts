@@ -4,6 +4,8 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  ClipboardList,
+  Megaphone,
   Settings,
   UserCog,
   Users,
@@ -41,11 +43,25 @@ export function getNavItems(projectId: ProjectId): NavItem[] {
       feature: "analytics",
     },
     {
+      id: "marketing-analytics",
+      label: "Landing Page Analytics",
+      href: `${base}/marketing-analytics`,
+      icon: Megaphone,
+      feature: "marketing-analytics",
+    },
+    {
       id: "leads",
       label: "Leads",
       href: `${base}/leads`,
       icon: Users,
       feature: "leads",
+    },
+    {
+      id: "marketing-leads",
+      label: "Marketing Leads",
+      href: `${base}/marketing-leads`,
+      icon: ClipboardList,
+      feature: "marketing-leads",
     },
     {
       id: "chatbot-leads",
@@ -88,6 +104,8 @@ export const logoutNavItem = {
 };
 
 export function getPageTitle(pathname: string): string {
+  if (pathname.includes("/marketing-analytics")) return "Landing Page Analytics";
+  if (pathname.includes("/marketing-leads")) return "Marketing Leads";
   if (pathname.includes("/website-analytics")) return "Website Analytics";
   if (pathname.includes("/chatbot-leads")) return "Chatbot Leads";
   if (pathname.includes("/blogs")) return "Blogs";

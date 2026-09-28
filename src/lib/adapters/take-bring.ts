@@ -1,8 +1,13 @@
 import { projectQuery } from "@/lib/db/pools";
 import {
+  ANALYTICS_MAX_EVENTS,
+  ANALYTICS_MAX_LEADS,
+  LIST_LEADS_MAX,
+} from "@/lib/adapters/limits";
+import { analyticsSinceIso, overviewSinceIso } from "@/lib/adapters/period";
+import {
   buildAnalyticsSnapshot,
   emptyAnalyticsSnapshot,
-  sinceIso,
   type RawAnalyticsEvent,
 } from "@/lib/adapters/analytics-engine";
 import type {
@@ -76,7 +81,7 @@ async function fetchLeadsSupabase(
     query = query.or("type.eq.chatbot,form_key.ilike.%chatbot%");
   }
 
-  const { data, error } = await query.limit(5000);
+  const { data, error } = await query.limit(LIST_LEADS_MAX);
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => mapLead(row as LeadRow));
 }
@@ -85,12 +90,50 @@ async function fetchLeadsPg(
   options?: { chatbotOnly?: boolean },
 ): Promise<UnifiedLead[]> {
   const chatbotOnly = options?.chatbotOnly ?? false;
-  let query = `SELECT * FROM leads ORDER BY created_at DESC LIMIT 5000`;
+  let query = `SELECT * FROM leads ORDER BY created_at DESC LIMIT $1`;
   if (chatbotOnly) {
-    query = `SELECT * FROM leads WHERE type = 'chatbot' OR form_key ILIKE '%chatbot%' ORDER BY created_at DESC LIMIT 5000`;
+    query = `SELECT * FROM leads WHERE type = 'chatbot' OR form_key ILIKE '%chatbot%' ORDER BY created_at DESC LIMIT $1`;
   }
-  const { rows } = await projectQuery("take-bring", query);
+  const { rows } = await projectQuery("take-bring", query, [LIST_LEADS_MAX]);
   return rows.map(mapLead);
+}
+
+async function fetchLeadsPgSince(
+  since: string,
+  limit = ANALYTICS_MAX_LEADS,
+): Promise<UnifiedLead[]> {
+  const { rows } = await projectQuery(
+    "take-bring",
+    `SELECT * FROM leads WHERE created_at >= $1 ORDER BY created_at DESC LIMIT $2`,
+    [since, limit],
+  );
+  return rows.map(mapLead);
+}
+
+async function fetchLeadsSupabaseSince(
+  since: string,
+  limit = ANALYTICS_MAX_LEADS,
+): Promise<UnifiedLead[]> {
+  const supabase = getTakeBringSupabase();
+  if (!supabase) throw new Error("Take & Bring Supabase is not configured.");
+
+  const { data, error } = await supabase
+    .from("leads")
+    .select(LEAD_SELECT)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => mapLead(row as LeadRow));
+}
+
+async function fetchLeadsSince(since: string) {
+  return withTakeBringConnection((mode) =>
+    mode === "supabase"
+      ? fetchLeadsSupabaseSince(since)
+      : fetchLeadsPgSince(since),
+  );
 }
 
 async function fetchLeads(options?: { chatbotOnly?: boolean }) {
@@ -110,23 +153,41 @@ async function fetchEventsSupabase(since: string): Promise<RawAnalyticsEvent[]> 
     )
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(20000);
+    .limit(ANALYTICS_MAX_EVENTS);
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => mapEvent(row as EventRow));
 }
 
-async function fetchEventsPg(since: string): Promise<RawAnalyticsEvent[]> {
+async function fetchEventsPg(
+  since: string,
+  limit = ANALYTICS_MAX_EVENTS,
+): Promise<RawAnalyticsEvent[]> {
   const { rows } = await projectQuery<EventRow>(
     "take-bring",
     `SELECT id, created_at, event_type, path, cta_id, consent_value, session_id, visitor_id, country, device, browser, locale
      FROM analytics_events
      WHERE created_at >= $1
      ORDER BY created_at DESC
-     LIMIT 20000`,
-    [since],
+     LIMIT $2`,
+    [since, limit],
   );
   return rows.map(mapEvent);
+}
+
+async function countDistinctVisitors30dPg(since: string): Promise<number> {
+  try {
+    const { rows } = await projectQuery(
+      "take-bring",
+      `SELECT COUNT(DISTINCT COALESCE(NULLIF(visitor_id,''), session_id))::int AS count
+       FROM analytics_events
+       WHERE event_type = 'page_view' AND created_at >= $1`,
+      [since],
+    );
+    return Number(rows[0]?.count ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 async function fetchEvents(since: string) {
@@ -146,31 +207,65 @@ async function countSupabase(table: string, since?: string) {
   return count ?? 0;
 }
 
+async function fetchRecentLeadsSupabase(limit: number): Promise<UnifiedLead[]> {
+  const supabase = getTakeBringSupabase();
+  if (!supabase) throw new Error("Take & Bring Supabase is not configured.");
+  const { data, error } = await supabase
+    .from("leads")
+    .select(LEAD_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => mapLead(row as LeadRow));
+}
+
+async function fetchRecentLeadsPg(limit: number): Promise<UnifiedLead[]> {
+  const { rows } = await projectQuery(
+    "take-bring",
+    `SELECT * FROM leads ORDER BY created_at DESC LIMIT $1`,
+    [limit],
+  );
+  return rows.map(mapLead);
+}
+
 export const takeBringAdapter: ProjectAdapter = {
+  async getNewLeadsCount30d(): Promise<number> {
+    const since = overviewSinceIso();
+    return withTakeBringConnection(async (mode) => {
+      if (mode === "supabase") {
+        return countSupabase("leads", since);
+      }
+      const { rows } = await projectQuery(
+        "take-bring",
+        `SELECT COUNT(*)::int AS count FROM leads WHERE created_at >= $1`,
+        [since],
+      );
+      return Number(rows[0]?.count ?? 0);
+    });
+  },
+
+  async getRecentLeads(limit: number): Promise<UnifiedLead[]> {
+    return withTakeBringConnection((mode) =>
+      mode === "supabase"
+        ? fetchRecentLeadsSupabase(limit)
+        : fetchRecentLeadsPg(limit),
+    );
+  },
+
   async getOverviewMetrics(): Promise<OverviewMetrics> {
-    const since = sinceIso(30);
+    const since = overviewSinceIso();
 
     return withTakeBringConnection(async (mode) => {
       if (mode === "supabase") {
-        const [totalLeads, newLeads30d, events] = await Promise.all([
-          countSupabase("leads"),
-          countSupabase("leads", since),
-          fetchEventsSupabase(since),
-        ]);
+        const [totalLeads, newLeads30d, visitors30d, blogCount, userCount] =
+          await Promise.all([
+            countSupabase("leads"),
+            countSupabase("leads", since),
+            countDistinctVisitors30dPg(since),
+            countSupabase("blogs").catch(() => 0),
+            countSupabase("users").catch(() => 0),
+          ]);
 
-        const visitors = new Set<string>();
-        for (const e of events) {
-          if (e.eventType !== "page_view") continue;
-          const id = e.visitorId || e.sessionId;
-          if (id) visitors.add(id);
-        }
-
-        const [blogCount, userCount] = await Promise.all([
-          countSupabase("blogs").catch(() => 0),
-          countSupabase("users").catch(() => 0),
-        ]);
-
-        const visitors30d = visitors.size;
         return {
           totalLeads,
           newLeads30d,
@@ -184,31 +279,32 @@ export const takeBringAdapter: ProjectAdapter = {
         };
       }
 
-      const [leadsRes, eventsRes, blogsRes, usersRes] = await Promise.all([
-      projectQuery("take-bring", `SELECT COUNT(*)::int AS count FROM leads`),
-      projectQuery(
-        "take-bring",
-        `SELECT COUNT(DISTINCT COALESCE(NULLIF(visitor_id,''), session_id))::int AS count
-         FROM analytics_events
-         WHERE event_type = 'page_view' AND created_at >= $1`,
-        [since],
-      ),
-      projectQuery("take-bring", `SELECT COUNT(*)::int AS count FROM blogs`).catch(() => ({
-        rows: [{ count: 0 }],
-      })),
-      projectQuery("take-bring", `SELECT COUNT(*)::int AS count FROM users`).catch(() => ({
-        rows: [{ count: 0 }],
-      })),
-    ]);
+      const [leadsRes, newLeadsRes, eventsRes, blogsRes, usersRes] =
+        await Promise.all([
+          projectQuery("take-bring", `SELECT COUNT(*)::int AS count FROM leads`),
+          projectQuery(
+            "take-bring",
+            `SELECT COUNT(*)::int AS count FROM leads WHERE created_at >= $1`,
+            [since],
+          ),
+          projectQuery(
+            "take-bring",
+            `SELECT COUNT(DISTINCT COALESCE(NULLIF(visitor_id,''), session_id))::int AS count
+             FROM analytics_events
+             WHERE event_type = 'page_view' AND created_at >= $1`,
+            [since],
+          ),
+          projectQuery("take-bring", `SELECT COUNT(*)::int AS count FROM blogs`).catch(() => ({
+            rows: [{ count: 0 }],
+          })),
+          projectQuery("take-bring", `SELECT COUNT(*)::int AS count FROM users`).catch(() => ({
+            rows: [{ count: 0 }],
+          })),
+        ]);
 
-    const totalLeads = Number(leadsRes.rows[0]?.count ?? 0);
-    const newLeadsRes = await projectQuery(
-      "take-bring",
-      `SELECT COUNT(*)::int AS count FROM leads WHERE created_at >= $1`,
-      [since],
-    );
-    const newLeads30d = Number(newLeadsRes.rows[0]?.count ?? 0);
-    const visitors30d = Number(eventsRes.rows[0]?.count ?? 0);
+      const totalLeads = Number(leadsRes.rows[0]?.count ?? 0);
+      const newLeads30d = Number(newLeadsRes.rows[0]?.count ?? 0);
+      const visitors30d = Number(eventsRes.rows[0]?.count ?? 0);
 
       return {
         totalLeads,
@@ -225,16 +321,20 @@ export const takeBringAdapter: ProjectAdapter = {
   },
 
   async getAnalyticsRawData(period: AnalyticsPeriod) {
-    const days = period === "7d" ? 7 : 30;
-    const since = sinceIso(days * 2);
-    const [events, leads] = await Promise.all([fetchEvents(since), fetchLeads()]);
+    const since = analyticsSinceIso(period);
+    const [events, leads] = await Promise.all([
+      fetchEvents(since),
+      fetchLeadsSince(since),
+    ]);
     return { events, leads };
   },
 
   async getAnalyticsSnapshot(period: AnalyticsPeriod): Promise<AnalyticsSnapshot> {
-    const days = period === "7d" ? 7 : 30;
-    const since = sinceIso(days * 2);
-    const [events, leads] = await Promise.all([fetchEvents(since), fetchLeads()]);
+    const since = analyticsSinceIso(period);
+    const [events, leads] = await Promise.all([
+      fetchEvents(since),
+      fetchLeadsSince(since),
+    ]);
     if (events.length === 0 && leads.length === 0) {
       return emptyAnalyticsSnapshot(period);
     }

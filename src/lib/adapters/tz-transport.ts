@@ -1,8 +1,13 @@
 import { projectQuery } from "@/lib/db/pools";
 import {
+  ANALYTICS_MAX_EVENTS,
+  ANALYTICS_MAX_LEADS,
+  LIST_LEADS_MAX,
+} from "@/lib/adapters/limits";
+import { analyticsSinceIso, overviewSinceIso } from "@/lib/adapters/period";
+import {
   buildAnalyticsSnapshot,
   emptyAnalyticsSnapshot,
-  sinceIso,
   type RawAnalyticsEvent,
 } from "@/lib/adapters/analytics-engine";
 import type {
@@ -59,33 +64,76 @@ function mapEvent(row: EventRow): RawAnalyticsEvent {
   };
 }
 
-async function fetchLeads(options?: { chatbotOnly?: boolean }): Promise<UnifiedLead[]> {
+async function fetchLeads(options?: {
+  chatbotOnly?: boolean;
+  limit?: number;
+}): Promise<UnifiedLead[]> {
   const chatbotOnly = options?.chatbotOnly ?? false;
+  const limit = options?.limit ?? LIST_LEADS_MAX;
   const query = chatbotOnly
-    ? `SELECT ${LEAD_SELECT} FROM leads WHERE source = 'CHATBOT' ORDER BY created_at DESC LIMIT 5000`
-    : `SELECT ${LEAD_SELECT} FROM leads ORDER BY created_at DESC LIMIT 5000`;
-  const { rows } = await projectQuery("tz-transport", query);
+    ? `SELECT ${LEAD_SELECT} FROM leads WHERE source = 'CHATBOT' ORDER BY created_at DESC LIMIT $1`
+    : `SELECT ${LEAD_SELECT} FROM leads ORDER BY created_at DESC LIMIT $1`;
+  const { rows } = await projectQuery("tz-transport", query, [limit]);
   return rows.map(mapLead);
 }
 
-async function fetchEvents(since: string): Promise<RawAnalyticsEvent[]> {
+async function fetchLeadsSince(
+  since: string,
+  limit = ANALYTICS_MAX_LEADS,
+): Promise<UnifiedLead[]> {
+  const { rows } = await projectQuery(
+    "tz-transport",
+    `SELECT ${LEAD_SELECT} FROM leads WHERE created_at >= $1 ORDER BY created_at DESC LIMIT $2`,
+    [since, limit],
+  );
+  return rows.map(mapLead);
+}
+
+async function fetchEvents(
+  since: string,
+  limit = ANALYTICS_MAX_EVENTS,
+): Promise<RawAnalyticsEvent[]> {
   const { rows } = await projectQuery<EventRow>(
     "tz-transport",
     `SELECT id, created_at, event_type, path, cta_id, consent_value, session_id, visitor_id, country, device, browser
      FROM analytics_events
      WHERE created_at >= $1
      ORDER BY created_at DESC
-     LIMIT 20000`,
-    [since],
+     LIMIT $2`,
+    [since, limit],
   );
   return rows.map(mapEvent);
 }
 
 export const tzTransportAdapter: ProjectAdapter = {
+  async getNewLeadsCount30d(): Promise<number> {
+    const since = overviewSinceIso();
+    const { rows } = await projectQuery(
+      "tz-transport",
+      `SELECT COUNT(*)::int AS count FROM leads WHERE created_at >= $1`,
+      [since],
+    );
+    return Number(rows[0]?.count ?? 0);
+  },
+
+  async getRecentLeads(limit: number): Promise<UnifiedLead[]> {
+    const { rows } = await projectQuery(
+      "tz-transport",
+      `SELECT ${LEAD_SELECT} FROM leads ORDER BY created_at DESC LIMIT $1`,
+      [limit],
+    );
+    return rows.map(mapLead);
+  },
+
   async getOverviewMetrics(): Promise<OverviewMetrics> {
-    const since = sinceIso(30);
-    const [leadsRes, eventsRes, blogsRes, usersRes] = await Promise.all([
+    const since = overviewSinceIso();
+    const [leadsRes, newLeadsRes, eventsRes, blogsRes, usersRes] = await Promise.all([
       projectQuery("tz-transport", `SELECT COUNT(*)::int AS count FROM leads`),
+      projectQuery(
+        "tz-transport",
+        `SELECT COUNT(*)::int AS count FROM leads WHERE created_at >= $1`,
+        [since],
+      ),
       projectQuery(
         "tz-transport",
         `SELECT COUNT(DISTINCT COALESCE(NULLIF(visitor_id,''), session_id))::int AS count
@@ -100,11 +148,6 @@ export const tzTransportAdapter: ProjectAdapter = {
     ]);
 
     const totalLeads = Number(leadsRes.rows[0]?.count ?? 0);
-    const newLeadsRes = await projectQuery(
-      "tz-transport",
-      `SELECT COUNT(*)::int AS count FROM leads WHERE created_at >= $1`,
-      [since],
-    );
     const newLeads30d = Number(newLeadsRes.rows[0]?.count ?? 0);
     const visitors30d = Number(eventsRes.rows[0]?.count ?? 0);
 
@@ -122,16 +165,20 @@ export const tzTransportAdapter: ProjectAdapter = {
   },
 
   async getAnalyticsRawData(period: AnalyticsPeriod) {
-    const days = period === "7d" ? 7 : 30;
-    const since = sinceIso(days * 2);
-    const [events, leads] = await Promise.all([fetchEvents(since), fetchLeads()]);
+    const since = analyticsSinceIso(period);
+    const [events, leads] = await Promise.all([
+      fetchEvents(since),
+      fetchLeadsSince(since),
+    ]);
     return { events, leads };
   },
 
   async getAnalyticsSnapshot(period: AnalyticsPeriod): Promise<AnalyticsSnapshot> {
-    const days = period === "7d" ? 7 : 30;
-    const since = sinceIso(days * 2);
-    const [events, leads] = await Promise.all([fetchEvents(since), fetchLeads()]);
+    const since = analyticsSinceIso(period);
+    const [events, leads] = await Promise.all([
+      fetchEvents(since),
+      fetchLeadsSince(since),
+    ]);
     if (events.length === 0 && leads.length === 0) {
       return emptyAnalyticsSnapshot(period);
     }

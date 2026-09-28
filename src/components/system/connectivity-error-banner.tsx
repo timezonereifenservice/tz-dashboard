@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertTriangle, ExternalLink, Loader2, X } from "lucide-react";
 import styles from "./system.module.css";
 
@@ -13,6 +13,7 @@ type ConnectivityErrorBannerProps = {
   statusPageHref?: string;
   dismissible?: boolean;
   onDismiss?: () => void;
+  /** @deprecated No automatic retry interval — manual retry only. */
   retryIntervalSeconds?: number;
 };
 
@@ -25,24 +26,14 @@ export function ConnectivityErrorBanner({
   statusPageHref,
   dismissible = true,
   onDismiss,
-  retryIntervalSeconds = 24,
 }: ConnectivityErrorBannerProps) {
-  const [countdown, setCountdown] = useState(retryIntervalSeconds);
   const [retrying, setRetrying] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setCountdown((value) => (value <= 1 ? retryIntervalSeconds : value - 1));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [retryIntervalSeconds]);
 
   async function handleRetry() {
     if (!onRetry || retrying) return;
     setRetrying(true);
     try {
       await onRetry();
-      setCountdown(retryIntervalSeconds);
     } finally {
       window.setTimeout(() => setRetrying(false), 600);
     }
@@ -83,7 +74,7 @@ export function ConnectivityErrorBanner({
               {retrying ? (
                 <Loader2 size={16} className={styles.retrySpin} aria-hidden />
               ) : null}
-              {retrying ? "Connecting…" : `Retry Connection (${countdown}s)`}
+              {retrying ? "Connecting…" : "Retry connection"}
             </button>
           ) : null}
           {statusPageHref ? (
