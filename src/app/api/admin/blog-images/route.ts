@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import { requireBlogWriter } from "@/lib/blogs/auth";
 import {
   listTzTransportBlogImages,
@@ -6,7 +7,7 @@ import {
 } from "@/lib/blogs/tz-transport-create";
 
 export async function GET() {
-  const auth = await requireBlogWriter();
+  const auth = await requireBlogWriter("tz-transport");
   if (!auth.ok) {
     return NextResponse.json({ message: auth.error }, { status: auth.status });
   }
@@ -24,7 +25,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireBlogWriter();
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
+  const auth = await requireBlogWriter("tz-transport");
   if (!auth.ok) {
     return NextResponse.json({ message: auth.error }, { status: auth.status });
   }

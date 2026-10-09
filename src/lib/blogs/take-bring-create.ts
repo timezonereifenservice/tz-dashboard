@@ -19,6 +19,23 @@ import {
   getTakeBringSupabase,
   isTakeBringSupabaseConfigured,
 } from "@/lib/supabase/take-bring";
+import { syncEnglishTranslationBestEffort } from "@/lib/blogs/syncBlogEnglishTranslation";
+
+async function syncTakeBringEnglish(blog: DashboardBlog) {
+  await syncEnglishTranslationBestEffort(
+    {
+      id: blog.id,
+      slug: blog.slug,
+      title: blog.title,
+      excerpt: blog.excerpt,
+      seoTitle: blog.seoTitle,
+      seoDescription: blog.seoDescription,
+      category: blog.category,
+      bodyHtml: blog.bodyHtml,
+    },
+    { projectId: "take-bring" },
+  );
+}
 
 const BLOG_RETURN =
   "id, title, slug, excerpt, status, seo_title, seo_description, category, date_label, body_html, cover_image_url, cover_image_asset_id, views_count, published_at, created_at, updated_at" as const;
@@ -195,10 +212,12 @@ export async function createTakeBringBlog(
     throw new Error("Cover image is required.");
   }
 
-  if (isTakeBringSupabaseConfigured()) {
-    return createTakeBringBlogSupabase(input);
-  }
-  return createTakeBringBlogPg(input);
+  const blog = isTakeBringSupabaseConfigured()
+    ? await createTakeBringBlogSupabase(input)
+    : await createTakeBringBlogPg(input);
+
+  await syncTakeBringEnglish(blog);
+  return blog;
 }
 
 async function getTakeBringBlogByIdSupabase(id: string): Promise<DashboardBlog | null> {
@@ -341,8 +360,19 @@ export async function updateTakeBringBlog(
     throw new Error("Cover image is required.");
   }
 
-  if (isTakeBringSupabaseConfigured()) {
-    return updateTakeBringBlogSupabase(id, input, existing);
-  }
-  return updateTakeBringBlogPg(id, input, existing);
+  const blog = isTakeBringSupabaseConfigured()
+    ? await updateTakeBringBlogSupabase(id, input, existing)
+    : await updateTakeBringBlogPg(id, input, existing);
+
+  await syncTakeBringEnglish(blog);
+  return blog;
+}
+
+export async function deleteTakeBringBlog(blogId: string): Promise<boolean> {
+  const { rowCount } = await projectQuery(
+    "take-bring",
+    `DELETE FROM blogs WHERE id::text = $1`,
+    [blogId],
+  );
+  return (rowCount ?? 0) > 0;
 }

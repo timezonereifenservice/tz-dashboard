@@ -5,8 +5,12 @@ import {
   BarChart3,
   FileCheck2,
   Globe,
+  Laptop,
   Layers,
+  MapPin,
   Megaphone,
+  MousePointerClick,
+  Smartphone,
   Users,
 } from "lucide-react";
 import { ConnectivityErrorBanner } from "@/components/system";
@@ -59,7 +63,7 @@ export function MarketingAnalyticsPanel({
       <DashboardPageHeader
         eyebrow="Marketing Pages"
         title="Landing Page Analytics"
-        description={`Page views, sessions, and form conversions from ${MARKETING_SITE.domain}.`}
+        description={`Views, CTAs, geo, devices, and form conversions from ${MARKETING_SITE.domain}.`}
         actions={
           <SegmentedControl
             options={PERIOD_OPTIONS}
@@ -151,12 +155,63 @@ export function MarketingAnalyticsPanel({
           className={styles.col6}
         />
 
+        <BreakdownList
+          title="Countries"
+          icon={Globe}
+          items={snapshot.countries.map((row) => ({
+            key: row.key,
+            label: row.label,
+            visitors: row.count,
+            sharePct: row.sharePct,
+          }))}
+          className={styles.col6}
+        />
+
+        <BreakdownList
+          title="Cities"
+          icon={MapPin}
+          items={snapshot.cities.map((row) => ({
+            key: row.key,
+            label: row.label,
+            visitors: row.count,
+            sharePct: row.sharePct,
+          }))}
+          className={styles.col6}
+        />
+
+        <BreakdownList
+          title="Devices"
+          icon={Smartphone}
+          items={snapshot.devices.map((row) => ({
+            key: row.key,
+            label: row.label,
+            visitors: row.count,
+            sharePct: row.sharePct,
+          }))}
+          className={styles.col6}
+        />
+
+        <BreakdownList
+          title="Browsers"
+          icon={Laptop}
+          items={snapshot.browsers.map((row) => ({
+            key: row.key,
+            label: row.label,
+            visitors: row.count,
+            sharePct: row.sharePct,
+          }))}
+          className={styles.col6}
+        />
+
         <DashboardCard className={styles.col6}>
           <p className={styles.sectionTitle}>Landing Pages</p>
           {snapshot.topPages.length ? (
             <ul className={styles.list}>
               {snapshot.topPages.map((page) => (
-                <li key={`${page.page}-${page.path}`} className={`${styles.listRow} ${styles.topPageRow}`}>
+                <li
+                  key={`${page.page}-${page.path}`}
+                  className={`${styles.listRow} ${styles.topPageRow}`}
+                >
                   <div className={styles.topPageInfo}>
                     <span className={styles.listLabel}>{page.label}</span>
                     <span className={styles.topPagePath} title={page.path}>
@@ -195,7 +250,9 @@ export function MarketingAnalyticsPanel({
                   snapshot.services.map((svc) => (
                     <tr key={svc.id}>
                       <td>{svc.label}</td>
-                      <td className={styles.numCell}>{svc.views.toLocaleString()}</td>
+                      <td className={styles.numCell}>
+                        {svc.views.toLocaleString()}
+                      </td>
                       <td className={styles.numCellStrong}>{svc.leads}</td>
                     </tr>
                   ))
@@ -208,6 +265,37 @@ export function MarketingAnalyticsPanel({
             </table>
           </div>
         </DashboardCard>
+
+        <DashboardCard className={styles.col6}>
+          <p className={styles.sectionTitle}>CTA Clicks</p>
+          {snapshot.ctas.length ? (
+            <ul className={styles.ctaPills}>
+              {snapshot.ctas.map((row) => (
+                <li key={row.key} className={styles.ctaPill}>
+                  <MousePointerClick size={14} aria-hidden />
+                  <span className={styles.ctaPillLabel}>{row.label}</span>
+                  <span className={styles.ctaPillCount}>
+                    {row.count.toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={styles.emptyHint}>No CTA clicks in this period yet.</p>
+          )}
+        </DashboardCard>
+
+        <BreakdownList
+          title="Top Referrers"
+          icon={Layers}
+          items={snapshot.referrers.map((row) => ({
+            key: row.key,
+            label: row.label,
+            visitors: row.count,
+            sharePct: row.sharePct,
+          }))}
+          className={styles.col6}
+        />
 
         <DashboardCard className={styles.col6}>
           <p className={styles.sectionTitle}>Event Types</p>

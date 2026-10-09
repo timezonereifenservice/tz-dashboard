@@ -11,6 +11,12 @@ export type MarketingAnalyticsEvent = {
   sessionId: string;
   path: string;
   referrer: string;
+  country: string;
+  city: string;
+  region: string;
+  device: string;
+  browser: string;
+  os: string;
 };
 
 export type MarketingLead = {
@@ -25,10 +31,46 @@ export type MarketingLead = {
   brand: string;
   model: string;
   year: string;
+  hsn: string;
+  tsn: string;
+  vin: string;
+  mileage: string;
+  tireSize: string;
+  preferredDate: string;
   service: string;
   serviceLabel: string;
   page: string;
   locale: string;
+  sessionId: string;
+  country: string;
+  city: string;
+  region: string;
+  device: string;
+  browser: string;
+  os: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  emailSent: boolean;
+  emailError: string;
+  referrer: string;
+};
+
+export type MarketingTimelineEvent = {
+  id: string;
+  createdAt: string;
+  event: string;
+  placement: string;
+  page: string;
+  path: string;
+  country: string;
+  city: string;
+  device: string;
+};
+
+export type MarketingLeadDetail = {
+  lead: MarketingLead;
+  timeline: MarketingTimelineEvent[];
 };
 
 export type MarketingBreakdownRow = {
@@ -61,6 +103,14 @@ export type MarketingDailyPoint = {
   leads: number;
 };
 
+export type MarketingCtaRow = {
+  key: string;
+  event: string;
+  placement: string;
+  label: string;
+  count: number;
+};
+
 export type MarketingAnalyticsSnapshot = {
   period: AnalyticsPeriod;
   kpis: {
@@ -77,10 +127,22 @@ export type MarketingAnalyticsSnapshot = {
   locales: MarketingBreakdownRow[];
   eventTypes: MarketingBreakdownRow[];
   placements: MarketingBreakdownRow[];
+  countries: MarketingBreakdownRow[];
+  cities: MarketingBreakdownRow[];
+  devices: MarketingBreakdownRow[];
+  browsers: MarketingBreakdownRow[];
+  ctas: MarketingCtaRow[];
+  referrers: MarketingBreakdownRow[];
   daily: MarketingDailyPoint[];
 };
 
 export type MarketingAnalyticsRawData = {
   events: MarketingAnalyticsEvent[];
   leads: MarketingLead[];
+  countries: MarketingBreakdownRow[];
+  cities: MarketingBreakdownRow[];
+  devices: MarketingBreakdownRow[];
+  browsers: MarketingBreakdownRow[];
+  ctas: MarketingCtaRow[];
+  referrers: MarketingBreakdownRow[];
 };

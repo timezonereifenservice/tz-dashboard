@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import slugify from "slugify";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import { requireBlogWriter } from "@/lib/blogs/auth";
 import { createTzTransportBlogRecord } from "@/lib/blogs/tz-transport-create";
 import { projectQuery } from "@/lib/db/pools";
@@ -17,7 +18,10 @@ type CreateBlogBody = {
 };
 
 export async function POST(req: NextRequest) {
-  const auth = await requireBlogWriter();
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
+  const auth = await requireBlogWriter("tz-transport");
   if (!auth.ok) {
     return NextResponse.json({ message: auth.error }, { status: auth.status });
   }

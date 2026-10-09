@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Eye,
@@ -18,8 +18,15 @@ import styles from "./login.module.css";
 
 const REMEMBER_EMAIL_KEY = "consolehub-remember-email";
 
+function safeNextPath(raw: string | null): string | null {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
+  if (raw.startsWith("/login")) return null;
+  return raw;
+}
+
 export function LoginPageView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -65,7 +72,8 @@ export function LoginPageView() {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
 
-      router.replace("/");
+      const nextPath = safeNextPath(searchParams.get("next"));
+      router.replace(nextPath ?? "/");
       router.refresh();
     } catch {
       setError("Unable to connect. Try again.");

@@ -1,11 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, RotateCcw, Search } from "lucide-react";
 import { ConnectivityErrorBanner, EmptyTableState } from "@/components/system";
 import { DashboardPageHeader } from "@/components/ui/tz-dashboard";
-import { MARKETING_SITE, marketingPageLabel, marketingServiceLabel } from "@/lib/marketing/constants";
+import {
+  MARKETING_SITE,
+  marketingCountryLabel,
+  marketingPageLabel,
+  marketingServiceLabel,
+} from "@/lib/marketing/constants";
 import type { MarketingLead } from "@/lib/marketing/types";
 import type { ProjectConfig } from "@/lib/projects/config";
 import { formatDate, formatNumber } from "@/lib/utils";
@@ -35,6 +41,13 @@ function exportCsv(leads: MarketingLead[]) {
       "Brand",
       "Model",
       "Year",
+      "Country",
+      "City",
+      "Device",
+      "Browser",
+      "UTM Source",
+      "UTM Medium",
+      "UTM Campaign",
     ],
     ...leads.map((lead) => [
       lead.createdAt,
@@ -46,6 +59,13 @@ function exportCsv(leads: MarketingLead[]) {
       lead.brand,
       lead.model,
       lead.year,
+      lead.country,
+      lead.city,
+      lead.device,
+      lead.browser,
+      lead.utmSource,
+      lead.utmMedium,
+      lead.utmCampaign,
     ]),
   ];
   const csv = rows
@@ -82,6 +102,9 @@ export function MarketingLeadsPanel({
         lead.brand,
         lead.model,
         lead.vehicle,
+        lead.country,
+        lead.city,
+        lead.device,
       ]
         .join(" ")
         .toLowerCase();
@@ -127,7 +150,7 @@ export function MarketingLeadsPanel({
             <input
               type="search"
               className={styles.searchInput}
-              placeholder="Search name, email, phone, service, or page…"
+              placeholder="Search name, email, phone, city, service, or page…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -164,6 +187,8 @@ export function MarketingLeadsPanel({
                   <th>Contact</th>
                   <th>Service</th>
                   <th>Landing Page</th>
+                  <th>Location</th>
+                  <th>Device</th>
                   <th>Vehicle</th>
                   <th>Created</th>
                 </tr>
@@ -177,7 +202,12 @@ export function MarketingLeadsPanel({
                     }`}
                   >
                     <td>
-                      <div className={styles.contactName}>{displayName(lead)}</div>
+                      <Link
+                        href={`/${project.slug}/marketing-leads/${lead.id}`}
+                        className={styles.contactName}
+                      >
+                        {displayName(lead)}
+                      </Link>
                       <div className={styles.contactEmail}>{lead.email || "—"}</div>
                       {lead.phone ? (
                         <div className={styles.contactHint}>{lead.phone}</div>
@@ -187,6 +217,17 @@ export function MarketingLeadsPanel({
                       {lead.serviceLabel || marketingServiceLabel(lead.service) || "—"}
                     </td>
                     <td>{marketingPageLabel(lead.page)}</td>
+                    <td>
+                      {[
+                        lead.city || null,
+                        lead.country
+                          ? marketingCountryLabel(lead.country)
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "—"}
+                    </td>
+                    <td>{lead.device || "—"}</td>
                     <td>
                       {[lead.brand, lead.model, lead.year].filter(Boolean).join(" ") ||
                         lead.vehicle ||

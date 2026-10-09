@@ -1,50 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
-import {
-  getProjectBySlug,
-  projectHasFeature,
-  type ProjectConfig,
-  type ProjectFeature,
-  type ProjectId,
-} from "@/lib/projects/config";
+import type { ProjectConfig, ProjectId } from "@/lib/projects/config";
+import { getProjectSwitchHref } from "@/lib/projects/switch-href";
 import styles from "./sidebar.module.css";
-
-const SECTION_FEATURES: Record<string, ProjectFeature> = {
-  overview: "overview",
-  "website-analytics": "analytics",
-  leads: "leads",
-  "chatbot-leads": "chatbot-leads",
-  blogs: "blogs",
-};
-
-function getSwitchTarget(pathname: string, nextProjectId: ProjectId) {
-  const project = getProjectBySlug(nextProjectId);
-  if (!project) return `/${nextProjectId}/overview`;
-
-  if (pathname.startsWith("/settings") || pathname.startsWith("/users")) {
-    return `/${nextProjectId}/overview`;
-  }
-
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) {
-    return `/${nextProjectId}/overview`;
-  }
-
-  const section = segments[1] ?? "overview";
-  const feature = SECTION_FEATURES[section];
-  if (feature && !projectHasFeature(project, feature)) {
-    return `/${nextProjectId}/overview`;
-  }
-
-  if (segments.length >= 2) {
-    return `/${nextProjectId}/${section}`;
-  }
-
-  return `/${nextProjectId}/overview`;
-}
 
 type ProjectSwitcherProps = {
   projects: ProjectConfig[];
@@ -52,7 +13,6 @@ type ProjectSwitcherProps = {
 };
 
 export function ProjectSwitcher({ projects, currentProject }: ProjectSwitcherProps) {
-  const pathname = usePathname();
   const router = useRouter();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -73,7 +33,7 @@ export function ProjectSwitcher({ projects, currentProject }: ProjectSwitcherPro
       return;
     }
     setOpen(false);
-    router.push(getSwitchTarget(pathname, nextProjectId));
+    router.push(getProjectSwitchHref(nextProjectId));
   }
 
   return (

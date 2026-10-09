@@ -7,6 +7,8 @@ import {
   LOGIN_LOCK_MINUTES,
   LOGIN_MAX_FAILED_ATTEMPTS,
 } from "@/lib/auth/config";
+import { checkRateLimit, pruneRateLimits } from "@/lib/auth/rate-limit";
+import { clientIp } from "@/lib/auth/request-guard";
 import { createAccessToken, createRefreshToken } from "@/lib/auth/tokens";
 import { authQuery } from "@/lib/db/pools";
 
@@ -29,6 +31,23 @@ function toDate(value: Date | string | null) {
 
 export async function POST(req: NextRequest) {
   try {
+    pruneRateLimits();
+    const ip = clientIp(req);
+    const ipLimit = checkRateLimit({
+      key: `login:ip:${ip}`,
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { message: "Too many login attempts. Try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(ipLimit.retryAfterSec) },
+        },
+      );
+    }
+
     const body = (await req.json()) as LoginBody;
     const email = body.email?.trim().toLowerCase();
     const password = body.password?.trim();
@@ -37,6 +56,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { message: "Email and password are required." },
         { status: 400 },
+      );
+    }
+
+    const emailLimit = checkRateLimit({
+      key: `login:email:${email}`,
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!emailLimit.ok) {
+      return NextResponse.json(
+        { message: "Too many login attempts. Try again later." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(emailLimit.retryAfterSec) },
+        },
       );
     }
 

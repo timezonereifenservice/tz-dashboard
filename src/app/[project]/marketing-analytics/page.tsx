@@ -1,11 +1,10 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { MarketingAnalyticsPanel } from "@/components/marketing/marketing-analytics-panel";
 import { getErrorMessage } from "@/lib/adapters/errors";
 import type { AnalyticsPeriod } from "@/lib/adapters/types";
 import { emptyMarketingSnapshot } from "@/lib/marketing/snapshot";
 import type { MarketingAnalyticsSnapshot } from "@/lib/marketing/types";
-import { getProjectBySlug, projectHasFeature } from "@/lib/projects/config";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
 import { getCachedMarketingAnalyticsSnapshot } from "@/lib/server/cached-metrics";
 
 type PageProps = {
@@ -19,10 +18,10 @@ export default async function MarketingAnalyticsPage({
 }: PageProps) {
   const { project: slug } = await params;
   const { period: periodParam } = await searchParams;
-  const project = getProjectBySlug(slug);
-  if (!project || !projectHasFeature(project, "marketing-analytics")) {
-    notFound();
-  }
+  const { project } = await requireProjectPageAccess(slug, {
+    navItemId: "marketing-analytics",
+    feature: "marketing-analytics",
+  });
 
   const period: AnalyticsPeriod = periodParam === "7d" ? "7d" : "30d";
 

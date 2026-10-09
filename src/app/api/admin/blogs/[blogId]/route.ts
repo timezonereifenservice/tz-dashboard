@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import { requireBlogWriter } from "@/lib/blogs/auth";
 import {
   getTzTransportBlogById,
@@ -11,7 +12,7 @@ type RouteParams = {
 };
 
 export async function GET(_req: NextRequest, { params }: RouteParams) {
-  const auth = await requireBlogWriter();
+  const auth = await requireBlogWriter("tz-transport");
   if (!auth.ok) {
     return NextResponse.json({ message: auth.error }, { status: auth.status });
   }
@@ -30,7 +31,10 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 }
 
 export async function PUT(req: NextRequest, { params }: RouteParams) {
-  const auth = await requireBlogWriter();
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
+  const auth = await requireBlogWriter("tz-transport");
   if (!auth.ok) {
     return NextResponse.json({ message: auth.error }, { status: auth.status });
   }

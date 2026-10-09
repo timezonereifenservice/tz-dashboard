@@ -1,16 +1,18 @@
-import { notFound } from "next/navigation";
 import { LeadsTable } from "@/components/leads/leads-panel";
 import { getAdapter } from "@/lib/adapters/registry";
 import { getErrorMessage } from "@/lib/adapters/errors";
 import type { UnifiedLead } from "@/lib/adapters/types";
-import { getProjectBySlug, projectHasFeature, type ProjectId } from "@/lib/projects/config";
+import type { ProjectId } from "@/lib/projects/config";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
 
 type PageProps = { params: Promise<{ project: string }> };
 
 export default async function ChatbotLeadsPage({ params }: PageProps) {
   const { project: slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project || !projectHasFeature(project, "chatbot-leads")) notFound();
+  const { project } = await requireProjectPageAccess(slug, {
+    navItemId: "chatbot-leads",
+    feature: "chatbot-leads",
+  });
 
   let leads: UnifiedLead[] = [];
   let error: string | null = null;

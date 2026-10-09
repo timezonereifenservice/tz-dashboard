@@ -97,6 +97,51 @@ export function getNavItemsForUser(
   return items.filter((item) => effective[item.id] !== false);
 }
 
+/** Sidebar-equivalent check for a project nav item id (e.g. "analytics", "blogs"). */
+export function canAccessProjectNavItem(
+  projectId: ProjectId,
+  navItemId: string,
+  userType: UserType,
+  navPermissions: UserNavPermissions,
+): boolean {
+  if (!canAccessProject(userType, projectId)) return false;
+  const effective = getEffectiveProjectNavPermissions(projectId, navPermissions);
+  return effective[navItemId] !== false;
+}
+
+/** Safe landing path when a section is forbidden (never loop on disabled overview). */
+export function getProjectFallbackHref(
+  projectId: ProjectId,
+  userType: UserType,
+  navPermissions: UserNavPermissions,
+): string {
+  const items = getNavItemsForUser(projectId, userType, navPermissions);
+  return items[0]?.href ?? "/settings";
+}
+
+/** Map URL section under /[project]/… to sidebar nav item id. */
+export function navItemIdFromProjectSection(section: string | undefined): string | null {
+  if (!section) return "overview";
+  switch (section) {
+    case "overview":
+      return "overview";
+    case "website-analytics":
+      return "analytics";
+    case "marketing-analytics":
+      return "marketing-analytics";
+    case "leads":
+      return "leads";
+    case "marketing-leads":
+      return "marketing-leads";
+    case "chatbot-leads":
+      return "chatbot-leads";
+    case "blogs":
+      return "blogs";
+    default:
+      return null;
+  }
+}
+
 export function getEditableProjectsForRole(userType: UserType): ProjectId[] {
   return getAccessibleProjectIds(userType);
 }

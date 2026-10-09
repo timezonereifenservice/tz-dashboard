@@ -1,29 +1,27 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { BlogsPanel } from "@/components/blogs/blogs-panel";
 import { getAdapter } from "@/lib/adapters/registry";
 import type { UnifiedBlog } from "@/lib/adapters/types";
 import { getErrorMessage } from "@/lib/adapters/errors";
-import { getCurrentUser } from "@/lib/auth/session";
 import { supportsBlogCreation } from "@/lib/blogs/create";
-import {
-  canAccessProject,
-  canManageProjectContent,
-} from "@/lib/projects/access";
-import { getProjectBySlug, projectHasFeature, type ProjectId } from "@/lib/projects/config";
+import { canManageProjectContent } from "@/lib/projects/access";
+import type { ProjectId } from "@/lib/projects/config";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
+import { getProjectFallbackHref } from "@/lib/users/nav-permissions";
 
 type PageProps = { params: Promise<{ project: string }> };
 
 export default async function BlogsPage({ params }: PageProps) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
   const { project: slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project || !projectHasFeature(project, "blogs")) notFound();
-  if (!canAccessProject(user.userType, project.id as ProjectId)) notFound();
+  const { user, project } = await requireProjectPageAccess(slug, {
+    navItemId: "blogs",
+    feature: "blogs",
+  });
 
   const adapter = getAdapter(project.id as ProjectId);
-  if (!adapter.listBlogs) notFound();
+  if (!adapter.listBlogs) {
+    redirect(getProjectFallbackHref(project.id, user.userType, user.navPermissions));
+  }
 
   let blogs: UnifiedBlog[] = [];
   let error: string | null = null;

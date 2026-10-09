@@ -458,6 +458,7 @@
 .contactName {
   font-weight: 600;
   color: var(--dash-on-surface);
+  text-decoration: none;
   transition: color 0.15s ease;
 }
 

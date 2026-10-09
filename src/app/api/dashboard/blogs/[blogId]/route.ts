@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import { requireBlogWriter } from "@/lib/blogs/auth";
 import {
   getTakeBringBlogById,
@@ -11,7 +12,7 @@ type RouteContext = {
 };
 
 export async function GET(_request: Request, context: RouteContext) {
-  const auth = await requireBlogWriter();
+  const auth = await requireBlogWriter("take-bring");
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error },
@@ -35,8 +36,11 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 }
 
-export async function PUT(request: Request, context: RouteContext) {
-  const auth = await requireBlogWriter();
+export async function PUT(request: NextRequest, context: RouteContext) {
+  const originError = assertSameOrigin(request);
+  if (originError) return originError;
+
+  const auth = await requireBlogWriter("take-bring");
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error },

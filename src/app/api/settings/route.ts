@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getCurrentUser } from "@/lib/auth/session";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import { authQuery } from "@/lib/db/pools";
 
 type Body = {
@@ -9,6 +10,9 @@ type Body = {
 };
 
 export async function PATCH(req: NextRequest) {
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

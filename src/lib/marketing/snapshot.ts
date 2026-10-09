@@ -1,6 +1,8 @@
 import type { AnalyticsPeriod } from "@/lib/adapters/types";
 import {
+  MARKETING_CTA_EVENTS,
   MARKETING_LOCALE_LABELS,
+  marketingEventLabel,
   marketingPageLabel,
   marketingServiceLabel,
 } from "@/lib/marketing/constants";
@@ -8,6 +10,7 @@ import type {
   MarketingAnalyticsRawData,
   MarketingAnalyticsSnapshot,
   MarketingBreakdownRow,
+  MarketingCtaRow,
   MarketingDailyPoint,
   MarketingPageRow,
   MarketingServiceRow,
@@ -64,6 +67,14 @@ function buildBreakdown(
       sharePct: Number(((value.count / total) * 100).toFixed(1)),
     }))
     .sort((a, b) => b.count - a.count);
+}
+
+function withShare(rows: MarketingBreakdownRow[]): MarketingBreakdownRow[] {
+  const total = rows.reduce((sum, row) => sum + row.count, 0) || 1;
+  return rows.map((row) => ({
+    ...row,
+    sharePct: Number(((row.count / total) * 100).toFixed(1)),
+  }));
 }
 
 function buildTopPages(
@@ -170,6 +181,27 @@ function buildDailySeries(
   return points;
 }
 
+function fallbackCtas(events: MarketingAnalyticsRawData["events"]): MarketingCtaRow[] {
+  const counts = new Map<string, MarketingCtaRow>();
+  for (const event of events) {
+    if (!MARKETING_CTA_EVENTS.has(event.event)) continue;
+    const placement = event.placement || "unknown";
+    const key = `${event.event}:${placement}`;
+    const existing = counts.get(key);
+    if (existing) existing.count += 1;
+    else {
+      counts.set(key, {
+        key,
+        event: event.event,
+        placement,
+        label: `${marketingEventLabel(event.event)} · ${placement}`,
+        count: 1,
+      });
+    }
+  }
+  return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+}
+
 export function buildMarketingAnalyticsSnapshot(
   period: AnalyticsPeriod,
   raw: MarketingAnalyticsRawData,
@@ -212,7 +244,7 @@ export function buildMarketingAnalyticsSnapshot(
   const eventTypes = buildBreakdown(
     currentEvents.map((e) => ({
       key: e.event || "unknown",
-      label: e.event.replace(/_/g, " ") || "Unknown",
+      label: marketingEventLabel(e.event),
     })),
   );
 
@@ -241,6 +273,12 @@ export function buildMarketingAnalyticsSnapshot(
     locales,
     eventTypes,
     placements,
+    countries: withShare(raw.countries),
+    cities: withShare(raw.cities),
+    devices: withShare(raw.devices),
+    browsers: withShare(raw.browsers),
+    ctas: raw.ctas.length ? raw.ctas : fallbackCtas(currentEvents),
+    referrers: withShare(raw.referrers),
     daily: buildDailySeries(period, currentPageViews, currentLeads),
   };
 }
@@ -248,5 +286,14 @@ export function buildMarketingAnalyticsSnapshot(
 export function emptyMarketingSnapshot(
   period: AnalyticsPeriod,
 ): MarketingAnalyticsSnapshot {
-  return buildMarketingAnalyticsSnapshot(period, { events: [], leads: [] });
+  return buildMarketingAnalyticsSnapshot(period, {
+    events: [],
+    leads: [],
+    countries: [],
+    cities: [],
+    devices: [],
+    browsers: [],
+    ctas: [],
+    referrers: [],
+  });
 }

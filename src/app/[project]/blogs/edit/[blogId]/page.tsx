@@ -1,31 +1,22 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { BlogEditorPanel } from "@/components/blogs/take-bring/blog-editor-panel";
 import { CreateNewBlogPanel } from "@/components/blogs/tz-transport/create-new-blog-panel";
-import { getCurrentUser } from "@/lib/auth/session";
 import { supportsBlogCreation } from "@/lib/blogs/create";
-import {
-  canAccessProject,
-  canManageProjectContent,
-} from "@/lib/projects/access";
-import {
-  getProjectBySlug,
-  projectHasFeature,
-  type ProjectId,
-} from "@/lib/projects/config";
+import { canManageProjectContent } from "@/lib/projects/access";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
 
 type PageProps = { params: Promise<{ project: string; blogId: string }> };
 
 export default async function EditBlogPage({ params }: PageProps) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
   const { project: slug, blogId } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project || !projectHasFeature(project, "blogs")) notFound();
-  if (!canAccessProject(user.userType, project.id as ProjectId)) notFound();
+  const { user, project } = await requireProjectPageAccess(slug, {
+    navItemId: "blogs",
+    feature: "blogs",
+  });
+
   if (
     !canManageProjectContent(user.userType) ||
-    !supportsBlogCreation(project.id as ProjectId)
+    !supportsBlogCreation(project.id)
   ) {
     redirect(`/${project.id}/blogs`);
   }

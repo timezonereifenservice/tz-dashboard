@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { AnalyticsPanel } from "@/components/analytics/analytics-panel";
 import { emptyAnalyticsSnapshot } from "@/lib/adapters/analytics-engine";
 import { getErrorMessage } from "@/lib/adapters/errors";
 import type { AnalyticsPeriod, AnalyticsSnapshot } from "@/lib/adapters/types";
-import { getProjectBySlug, type ProjectId } from "@/lib/projects/config";
+import type { ProjectId } from "@/lib/projects/config";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
 import { getCachedAnalyticsSnapshot } from "@/lib/server/cached-metrics";
 
 type PageProps = {
@@ -18,8 +18,10 @@ export default async function WebsiteAnalyticsPage({
 }: PageProps) {
   const { project: slug } = await params;
   const { period: periodParam } = await searchParams;
-  const project = getProjectBySlug(slug);
-  if (!project) notFound();
+  const { project } = await requireProjectPageAccess(slug, {
+    navItemId: "analytics",
+    feature: "analytics",
+  });
 
   const period: AnalyticsPeriod = periodParam === "7d" ? "7d" : "30d";
 

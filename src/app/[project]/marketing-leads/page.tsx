@@ -1,18 +1,17 @@
-import { notFound } from "next/navigation";
 import { MarketingLeadsPanel } from "@/components/marketing/marketing-leads-panel";
 import { getErrorMessage } from "@/lib/adapters/errors";
 import { listMarketingLeads } from "@/lib/marketing/fetch";
 import type { MarketingLead } from "@/lib/marketing/types";
-import { getProjectBySlug, projectHasFeature } from "@/lib/projects/config";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
 
 type PageProps = { params: Promise<{ project: string }> };
 
 export default async function MarketingLeadsPage({ params }: PageProps) {
   const { project: slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project || !projectHasFeature(project, "marketing-leads")) {
-    notFound();
-  }
+  const { project } = await requireProjectPageAccess(slug, {
+    navItemId: "marketing-leads",
+    feature: "marketing-leads",
+  });
 
   let leads: MarketingLead[] = [];
   let error: string | null = null;

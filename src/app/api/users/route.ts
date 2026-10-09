@@ -3,6 +3,7 @@ import {
   requireAdminUser,
   requireUsersMenuAccess,
 } from "@/lib/auth/require-admin";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import type { UserType } from "@/lib/projects/access";
 import {
   createHubUser,
@@ -47,6 +48,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
   const admin = await requireAdminUser();
   if (!admin) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });

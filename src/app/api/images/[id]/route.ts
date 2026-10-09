@@ -3,6 +3,7 @@ import { getTakeBringBlogImageFile } from "@/lib/blogs/take-bring-create";
 
 type Params = { params: Promise<{ id: string }> };
 
+/** Intentionally public — Take & Bring cover URLs are served without auth. */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   if (!id) {

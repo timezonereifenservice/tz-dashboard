@@ -3,6 +3,7 @@ import {
   requireAdminUser,
   requireUsersMenuAccess,
 } from "@/lib/auth/require-admin";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import type { UserType } from "@/lib/projects/access";
 import {
   deleteHubUser,
@@ -54,6 +55,9 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext) {
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
   const admin = await requireAdminUser();
   if (!admin) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });
@@ -115,7 +119,10 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(_req: NextRequest, context: RouteContext) {
+export async function DELETE(req: NextRequest, context: RouteContext) {
+  const originError = assertSameOrigin(req);
+  if (originError) return originError;
+
   const admin = await requireAdminUser();
   if (!admin) {
     return NextResponse.json({ message: "Forbidden." }, { status: 403 });

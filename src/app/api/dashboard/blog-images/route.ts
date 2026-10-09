@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { assertSameOrigin } from "@/lib/auth/request-guard";
 import { requireBlogWriter } from "@/lib/blogs/auth";
 import {
   listTakeBringBlogImages,
@@ -6,7 +7,7 @@ import {
 } from "@/lib/blogs/take-bring-create";
 
 export async function GET() {
-  const auth = await requireBlogWriter();
+  const auth = await requireBlogWriter("take-bring");
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error },
@@ -24,8 +25,11 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
-  const auth = await requireBlogWriter();
+export async function POST(request: NextRequest) {
+  const originError = assertSameOrigin(request);
+  if (originError) return originError;
+
+  const auth = await requireBlogWriter("take-bring");
   if (!auth.ok) {
     return NextResponse.json(
       { ok: false, error: auth.error },

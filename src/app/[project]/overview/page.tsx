@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import {
   OverviewPanel,
   type QuickModule,
@@ -6,14 +5,17 @@ import {
 import { getAdapter } from "@/lib/adapters/registry";
 import { EMPTY_OVERVIEW, getErrorMessage } from "@/lib/adapters/errors";
 import type { UnifiedLead } from "@/lib/adapters/types";
-import { getProjectBySlug, type ProjectId } from "@/lib/projects/config";
+import type { ProjectId } from "@/lib/projects/config";
+import { requireProjectPageAccess } from "@/lib/projects/require-page-access";
 
 type PageProps = { params: Promise<{ project: string }> };
 
 export default async function OverviewPage({ params }: PageProps) {
   const { project: slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project) notFound();
+  const { project } = await requireProjectPageAccess(slug, {
+    navItemId: "overview",
+    feature: "overview",
+  });
 
   let metrics = EMPTY_OVERVIEW;
   let error: string | null = null;
@@ -49,6 +51,27 @@ export default async function OverviewPage({ params }: PageProps) {
         metrics.newLeads30d > 0 ? `${metrics.newLeads30d} New` : undefined,
     },
   ];
+
+  if (project.features.includes("marketing-analytics")) {
+    quickModules.push({
+      id: "marketing-analytics",
+      href: `/${slug}/marketing-analytics`,
+      title: "Landing Page Analytics",
+      description:
+        "Offers landing traffic, conversion events, and campaign performance.",
+      icon: "analytics",
+    });
+  }
+
+  if (project.features.includes("marketing-leads")) {
+    quickModules.push({
+      id: "marketing-leads",
+      href: `/${slug}/marketing-leads`,
+      title: "Marketing Leads",
+      description: "Leads captured from timezone-reifenservice offers pages.",
+      icon: "leads",
+    });
+  }
 
   if (project.features.includes("chatbot-leads")) {
     quickModules.push({

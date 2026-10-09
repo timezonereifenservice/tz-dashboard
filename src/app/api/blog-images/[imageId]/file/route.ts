@@ -3,6 +3,7 @@ import { getTzTransportBlogImageFile } from "@/lib/blogs/tz-transport-create";
 
 type Params = { params: Promise<{ imageId: string }> };
 
+/** Intentionally public — TZ Transport cover URLs are served without auth. */
 export async function GET(_req: NextRequest, { params }: Params) {
   const { imageId } = await params;
   if (!imageId) {

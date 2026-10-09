@@ -10,6 +10,7 @@ import {
 import { prepareBlogImagePersistence } from "@/lib/blogs/persist-image";
 import { adminBlogFromSqlRow } from "@/lib/blogs/adminBlogFromSqlRow";
 import { adminBlogImageFromSqlRow } from "@/lib/blogs/adminBlogImageFromSqlRow";
+import { syncEnglishTranslationBestEffort } from "@/lib/blogs/syncBlogEnglishTranslation";
 import type {
   CreateBlogInput,
   CreatedBlog,
@@ -187,7 +188,20 @@ export async function createTzTransportBlogRecord(
     return blog;
   });
 
-  return adminBlogFromSqlRow(row as Record<string, unknown>);
+  const created = adminBlogFromSqlRow(row as Record<string, unknown>);
+  await syncEnglishTranslationBestEffort(
+    {
+      id: created.id,
+      slug: created.slug,
+      title: created.title,
+      excerpt: created.excerpt,
+      seoTitle: created.seoTitle,
+      seoDescription: created.seoDescription,
+      contentJson: created.contentJson,
+    },
+    { projectId: "tz-transport" },
+  );
+  return created;
 }
 
 export async function createTzTransportBlog(
@@ -321,5 +335,27 @@ export async function updateTzTransportBlogRecord(
   });
 
   if (!row) throw new Error("Failed to update blog.");
-  return adminBlogFromSqlRow(row as Record<string, unknown>);
+  const updated = adminBlogFromSqlRow(row as Record<string, unknown>);
+  await syncEnglishTranslationBestEffort(
+    {
+      id: updated.id,
+      slug: updated.slug,
+      title: updated.title,
+      excerpt: updated.excerpt,
+      seoTitle: updated.seoTitle,
+      seoDescription: updated.seoDescription,
+      contentJson: updated.contentJson,
+    },
+    { projectId: "tz-transport" },
+  );
+  return updated;
+}
+
+export async function deleteTzTransportBlog(blogId: string): Promise<boolean> {
+  const { rowCount } = await projectQuery(
+    "tz-transport",
+    `DELETE FROM blogs WHERE id = $1`,
+    [blogId],
+  );
+  return (rowCount ?? 0) > 0;
 }
