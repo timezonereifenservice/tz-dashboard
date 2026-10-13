@@ -144,7 +144,7 @@ async function fetchCtaBreakdown(since: string): Promise<MarketingCtaRow[]> {
     `SELECT event, COALESCE(NULLIF(TRIM(placement), ''), 'unknown') AS placement, COUNT(*)::int AS count
      FROM "AnalyticsEvent"
      WHERE "createdAt" >= $1
-       AND event IN ('click_call','click_whatsapp','click_email','click_form','click_map')
+       AND event IN ('click_call','click_whatsapp','click_email','click_form','click_map','click_locale','form_start','outbound_main_site')
      GROUP BY event, 2
      ORDER BY count DESC
      LIMIT 40`,

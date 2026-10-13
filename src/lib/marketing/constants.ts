@@ -13,7 +13,8 @@ export const MARKETING_PAGE_LABELS: Record<string, string> = {
 
 export const MARKETING_SERVICE_LABELS: Record<string, string> = {
   transmission: "Getriebespülung",
-  tires: "Reifenservice",
+  tyre: "Reifenservice",
+  tires: "Reifenservice", // legacy alias
   oil: "Ölwechsel",
   climate: "Klimaservice",
   glass: "Autoglas",
@@ -31,11 +32,17 @@ export const MARKETING_EVENT_LABELS: Record<string, string> = {
   click_email: "Email click",
   click_form: "Form CTA",
   click_map: "Open map",
+  click_locale: "Language switch",
+  form_start: "Form start",
   form_submit: "Form submit",
   form_success: "Form success",
   form_error: "Form error",
+  scroll_depth: "Scroll depth",
+  section_view: "Section view",
+  outbound_main_site: "Outbound main site",
 };
 
+/** Primary conversion CTAs shown in scorecards / CTA mix. */
 export const MARKETING_CTA_EVENTS = new Set([
   "click_call",
   "click_whatsapp",
@@ -43,6 +50,29 @@ export const MARKETING_CTA_EVENTS = new Set([
   "click_form",
   "click_map",
 ]);
+
+/** All action events included in placement breakdowns. */
+export const MARKETING_ACTION_EVENTS = [
+  "click_call",
+  "click_whatsapp",
+  "click_email",
+  "click_form",
+  "click_map",
+  "click_locale",
+  "form_start",
+  "form_submit",
+  "form_success",
+  "form_error",
+  "scroll_depth",
+  "section_view",
+  "outbound_main_site",
+] as const;
+
+export const MARKETING_CTA_EVENT_SQL = `'click_call','click_whatsapp','click_email','click_form','click_map'`;
+
+export const MARKETING_ACTION_EVENT_SQL = MARKETING_ACTION_EVENTS.map(
+  (e) => `'${e}'`,
+).join(",");
 
 export function marketingPageLabel(page: string, path?: string) {
   const key = page.trim().toLowerCase();

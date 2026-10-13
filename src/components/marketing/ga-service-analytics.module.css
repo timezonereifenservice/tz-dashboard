@@ -1,0 +1,351 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.note {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px dashed rgb(195 198 209 / 55%);
+  background: var(--dash-surface-container);
+  color: var(--dash-outline);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.kpiGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .kpiGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.serviceGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .serviceGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.serviceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  text-align: left;
+  width: 100%;
+  padding: 1rem 1.1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgb(195 198 209 / 40%);
+  background: var(--dash-surface-lowest);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.serviceCard:hover {
+  border-color: var(--dash-primary-container);
+  box-shadow: 0 8px 24px rgb(11 28 48 / 8%);
+  transform: translateY(-1px);
+}
+
+.serviceCardActive {
+  border-color: var(--dash-primary-container);
+  box-shadow: 0 0 0 1px var(--dash-primary-container);
+}
+
+.serviceHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.serviceTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--dash-on-surface);
+}
+
+.servicePath {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--dash-outline);
+}
+
+.convBadge {
+  flex-shrink: 0;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--dash-surface-container);
+  color: var(--dash-primary-container);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.metricRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.65rem;
+  background: var(--dash-surface-container);
+}
+
+.metricLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dash-outline);
+}
+
+.metricValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--dash-on-surface);
+}
+
+.ctaMini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ctaChip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(195 198 209 / 25%);
+  color: var(--dash-on-surface-variant);
+}
+
+.metaLine {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--dash-outline);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.dataTable th,
+.dataTable td {
+  padding: 0.65rem 0.5rem;
+  border-bottom: 1px solid rgb(195 198 209 / 35%);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dataTable th {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dash-outline);
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowLink {
+  color: var(--dash-primary-container);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+
+.rowLink:hover {
+  text-decoration: underline;
+}
+
+.grid2 {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .grid2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.sectionTitle {
+  margin: 0 0 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--dash-on-surface);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgb(195 198 209 / 30%);
+}
+
+.listLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--dash-on-surface);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listRight {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.listCount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.listShare {
+  font-size: 0.75rem;
+  color: var(--dash-outline);
+  min-width: 3rem;
+  text-align: right;
+}
+
+.empty {
+  margin: 0;
+  color: var(--dash-outline);
+  font-size: 0.875rem;
+}
+
+.backRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgb(195 198 209 / 45%);
+  background: var(--dash-surface-lowest);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--dash-on-surface);
+}
+
+.backBtn:hover {
+  border-color: var(--dash-primary-container);
+  color: var(--dash-primary-container);
+}
+
+.dailyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.dailyRow {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.barTrack {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgb(195 198 209 / 30%);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--dash-primary-container);
+  border-radius: 999px;
+}
+
+.leadRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgb(195 198 209 / 30%);
+}
+
+.leadRow:last-child {
+  border-bottom: none;
+}
+
+.leadName {
+  font-weight: 600;
+  color: var(--dash-on-surface);
+  text-decoration: none;
+}
+
+.leadName:hover {
+  color: var(--dash-primary-container);
+  text-decoration: underline;
+}
+
+.leadMeta {
+  font-size: 0.78rem;
+  color: var(--dash-outline);
+}
